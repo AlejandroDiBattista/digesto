@@ -1,61 +1,99 @@
-require 'docx'
 require 'pp'
+require 'docx'
+require 'fileutils'
+
+Limpias = "/Users/alejandro/Dropbox/limpiar"
+LL = './limpias/ale.docx'
 
 module Ordenanzas
-  class << self
-    def ubicar(patron)
-      "./ordenanzas/#{patron}"
-    end
 
-    def listar(solo_nombre = false)
-      lista = Dir[ubicar('*.docx')].sort
-      lista = lista.map{|x| nombre(x)} if solo_nombre 
-      lista
+  def ubicar(camino, nombre=nil, tipo=nil)
+    camino = camino.to_s
+    camino = "./#{camino}" unless camino['/']
+    if tipo || nombre
+      "#{camino}/#{nombre||'*'}.#{tipo||'*'}"
+    else
+      camino
     end
+  end
+  
+  def listar(carpeta = :ordenanzas, tipo = :docx)
+    Dir[ubicar(carpeta, '*', tipo)].sort.delete_if{|x|x['~']}
+  end
+      
+  def nombre(origen, tipo = :docx)
+    File.basename(origen, ".#{tipo}")
+  end
+  
+  def carpeta(camino)
+    File.dirname(camino)
+  end
+  
+  def leer(origen)
+    b = Docx::Document.open(origen)
+    b.paragraphs.map(&:text)
+  end
+  
+  def fecha_invalida?(lineas)
+    lineas.first[/\AYerba Buena, [0-3][0-9] de \w+ de [12][0-9][0-9][0-9]\Z/i].nil?
+  end
+  
+  def falta_visto_considerando?(lineas)
+    e = lineas.count{|x|x['·']}
+    lineas = lineas.select{|x| !x['·']}
+    o = lineas.index{|x| x[/\AORDENANZA/i]} || 0
+    v = lineas.index{|x| x[/\AVISTO:\s*\Z/i]} || 0 
+    c = lineas.index{|x| x[/\ACONSIDERANDO:\s*\Z/i]} || 0
+    !(o == 1 && v == 2 && c >= 4) && e == 0
+  end
+
+  def clasificar(categoria, clasificar: true, limpiar: true)
+    inicio = Time.new
+    FileUtils.mkdir_p ubicar(categoria)
+
+    # Copiar para analizar
+    if clasificar
+      puts " ▶︎ Copiando Ordenanzas a [#{categoria}]"
     
-    def nombre(origen)
-      origen.split('/').last.split('.').first
-    end
-    
-    def leer(origen)
-      b = Docx::Document.open(origen)
-      b.paragraphs.map(&:text)
-    end
-    
-    def procesar
-      n = 0
-      datos = listar.map do |x|
-        print ' ' if n % 10 == 0 
-        print '  ' if n % 50 == 0 
-        puts if n % 100 == 0 
-        puts if n % 500 == 0 
-        n += 1
-        print '.'
-        [leer(x), nombre(x)]
+      listar(:ordenanzas).each do |origen|
+        destino = ubicar(categoria, nombre(origen), :docx)
+        unless File.exist?(destino)
+          texto = leer(origen)
+          if yield(texto)
+            puts " > #{nombre(origen)} | [#{texto.first}]"
+            FileUtils.copy(origen, destino)
+          end
+        end
       end
-      datos.select{|x| yield(*x) }
     end
     
-
-    def es_fecha(linea)
-      !linea[/Yerba Buena, [0-3][0-9] de \w+ de [12][0-9][0-9][0-9]/i].nil?
-    end
-
-    def fechas
-      listar.map{|x|
-        l = leer(x).first
-        yield [nombre(x), l, es_fecha(l)]}
+    # Recuperar las ordenanzas limpias
+    if limpiar
+      puts " ▶︎ Recuperando Ordenanzas Limpias de [#{categoria}]"
+      listar(categoria).each do |destino|
+        texto = leer(destino)
+        if !yield(texto)
+          origen = ubicar(:ordenanzas, nombre(destino), :docx)
+          puts " < #{nombre(origen)} | [#{texto.first}]"
+          FileUtils.copy(destino, origen)
+          FileUtils.remove destino
+        end
       end
     end
-end
 
-l = Ordenanzas.listar()
-Ordenanzas.fechas do |n, l, c|
-  if !c
-    p n
-    p l
-    puts '_' * 100
+    puts " ◼︎ %0.1fs [Hay %i]" % [Time.new-inicio, listar(categoria).size]
   end
 end
 
-# p Ordenanzas.es_fecha("Yerba Buena, 4 de Enero de 1984")
+include Ordenanzas
+
+def verificar_fechas
+  clasificar(:fechas, clasificar: true){|texto| fecha_invalida?(texto)}
+end
+
+def verificar_visto_considerando
+  clasificar(:visto, clasificar: false){|texto| falta_visto_considerando?(texto)}
+end
+
+# verificar_fechas()
+verificar_visto_considerando()
