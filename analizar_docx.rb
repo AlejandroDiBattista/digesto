@@ -117,10 +117,10 @@ def verificar_sanciona_ordenanza
 end
 
 def limpiar_sanciona(texto)
-  (texto||"").gsub(' ','').gsub(':','').upcase
+  (texto||"").strip.gsub('  ',' ').gsub(':','').gsub('.','').upcase
 end
 
-l = listar(Limpias).map do |origen|
+l = listar(:ordenanzas).map do |origen|
   lineas = leer(origen)
   tmp = lineas.select{|x|x[/SANCIONA.*ORDENANZA/] }
   if tmp.size > 1
