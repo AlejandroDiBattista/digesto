@@ -1,9 +1,8 @@
 require 'pp'
 require 'docx'
 require 'fileutils'
-
+require './base'
 Limpias = "/Users/alejandro/Dropbox/limpiar"
-LL = './limpias/ale.docx'
 
 module Ordenanzas
 
@@ -47,6 +46,10 @@ module Ordenanzas
     !(o == 1 && v == 2 && c >= 4) && e == 0
   end
 
+  def falta_sanciona_ordenanza?(lineas)
+    lineas.select{|x| x[/SANCIONA.*ORDENANZA/]}.empty?
+  end
+  
   def clasificar(categoria, clasificar: true, limpiar: true)
     inicio = Time.new
     FileUtils.mkdir_p ubicar(categoria)
@@ -55,7 +58,7 @@ module Ordenanzas
     if clasificar
       puts " ▶︎ Copiando Ordenanzas a [#{categoria}]"
     
-      listar(:ordenanzas).each do |origen|
+      listar(Limpias).each do |origen|
         destino = ubicar(categoria, nombre(origen), :docx)
         unless File.exist?(destino)
           texto = leer(origen)
@@ -73,7 +76,7 @@ module Ordenanzas
       listar(categoria).each do |destino|
         texto = leer(destino)
         if !yield(texto)
-          origen = ubicar(:ordenanzas, nombre(destino), :docx)
+          origen = ubicar(Limpias, nombre(destino), :docx)
           puts " < #{nombre(origen)} | [#{texto.first}]"
           FileUtils.copy(destino, origen)
           FileUtils.remove destino
@@ -83,17 +86,54 @@ module Ordenanzas
 
     puts " ◼︎ %0.1fs [Hay %i]" % [Time.new-inicio, listar(categoria).size]
   end
+  
 end
 
 include Ordenanzas
 
-def verificar_fechas
+def reemplazar_por_limpias(categoria)
+  i =  0
+  lista = listar(categoria).map{|x|nombre(x)}
+  limpia = listar(Limpias).map{|x|nombre(x)}
+
+  (lista & limpia).each do |nombre|
+    origen  = ubicar(Limpias, nombre, :docx)
+    destino = ubicar(categoria, nombre, :docx)
+    puts "#{i+=1}) #{origen} =>  #{destino}"
+    # FileUtils.copy(origen, destino)
+  end
+end
+
+def verificar_fechas()
   clasificar(:fechas, clasificar: true){|texto| fecha_invalida?(texto)}
 end
 
 def verificar_visto_considerando
-  clasificar(:visto, clasificar: false){|texto| falta_visto_considerando?(texto)}
+  clasificar(:visto, clasificar: true){|texto| falta_visto_considerando?(texto)}
 end
 
+def verificar_sanciona_ordenanza
+  clasificar(:sanciona, clasificar: false){|texto| falta_sanciona_ordenanza?(texto)}
+end
+
+def limpiar_sanciona(texto)
+  (texto||"").gsub(' ','').gsub(':','').upcase
+end
+
+l = listar(Limpias).map do |origen|
+  lineas = leer(origen)
+  tmp = lineas.select{|x|x[/SANCIONA.*ORDENANZA/] }
+  if tmp.size > 1
+    puts nombre(origen)
+    pp tmp
+  end
+  tmp.first
+end
+
+ll = l.map{|x|limpiar_sanciona(x)}
+pp ll.contar
+
 # verificar_fechas()
-verificar_visto_considerando()
+# verificar_visto_considerando()
+# reemplazar_por_limpias(:ordenanzas)
+# verificar_sanciona_ordenanza
