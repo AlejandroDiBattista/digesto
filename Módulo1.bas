@@ -1,1 +1,3 @@
-Attribute VB_Name = "Módulo1"
+Attribute VB_Name = "MÃ³dulo1"
+
+Esto funciona
