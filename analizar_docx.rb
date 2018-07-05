@@ -57,7 +57,7 @@ module Ordenanzas
     if clasificar
       puts " ▶︎ Copiando Ordenanzas a [#{categoria}]"
     
-      listar(Limpias).each do |origen|
+      listar(:limpias).each do |origen|
         destino = ubicar(categoria, nombre(origen), :docx)
         unless File.exist?(destino)
           texto = leer(origen)
@@ -119,10 +119,16 @@ def limpiar_sanciona(texto)
   (texto||"").strip.gsub('  ',' ').gsub(':','').gsub('.','').upcase
 end
 
+def sanciona_mal_dividido?(texto)
+	tmp = texto.select{|x|x[/SANCIONA.*ORDENANZA/] }.map{|x|limpiar_sanciona(x)}
+  	tmp.size > 0 && tmp.first[/^SANCIONA .* CON FUERZA DE ORDENANZA$/]
+end
 
-clasificar(:mal_sanciona){|lineas| lineas.find{|linea| limpiar_sanciona(linea)[/^SANCIONA .* CON FUERZA DE ORDENANZA$/]}}
+ p "ANTES"
+ clasificar(:mal_sanciona){|lineas| sanciona_mal_dividido?(lineas)}
+ p "DESPUES"
+# return
 
-return
 p "ANALISANDO ESTRUCTURA"
 l = listar(:ordenanzas).map do |origen|
   lineas = leer(origen)
