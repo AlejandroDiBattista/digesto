@@ -130,8 +130,11 @@ l = listar(:ordenanzas).map do |origen|
   tmp.first
 end
 
-ll = l.map{|x|limpiar_sanciona(x)}
-pp ll.contar
+puts "ANALISANDO ORDENANZAS: SANCIONA"
+ll = l.map{|x| limpiar_sanciona(x) }
+aa = ll.contar
+bb = aa.select{|d,c| d[/CON.*DEL/]}
+pp bb 
 
 # verificar_fechas()
 # verificar_visto_considerando()
