@@ -2,7 +2,6 @@ require 'pp'
 require 'docx'
 require 'fileutils'
 require './base'
-Limpias = "/Users/alejandro/Dropbox/limpiar"
 
 module Ordenanzas
 
@@ -76,7 +75,7 @@ module Ordenanzas
       listar(categoria).each do |destino|
         texto = leer(destino)
         if !yield(texto)
-          origen = ubicar(Limpias, nombre(destino), :docx)
+          origen = ubicar(:limpias, nombre(destino), :docx)
           puts " < #{nombre(origen)} | [#{texto.first}]"
           FileUtils.copy(destino, origen)
           FileUtils.remove destino
@@ -94,10 +93,10 @@ include Ordenanzas
 def reemplazar_por_limpias(categoria)
   i =  0
   lista = listar(categoria).map{|x|nombre(x)}
-  limpia = listar(Limpias).map{|x|nombre(x)}
+  limpia = listar(:limpias).map{|x|nombre(x)}
 
   (lista & limpia).each do |nombre|
-    origen  = ubicar(Limpias, nombre, :docx)
+    origen  = ubicar(:limpias, nombre, :docx)
     destino = ubicar(categoria, nombre, :docx)
     puts "#{i+=1}) #{origen} =>  #{destino}"
     # FileUtils.copy(origen, destino)
