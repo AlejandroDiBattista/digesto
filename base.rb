@@ -99,14 +99,14 @@ module Enumerable
   end
   
   def contar
-    uniq.map{|x|[x, count(x)]}.sort_by(&:last).reverse
+    uniq.map{|x| [x, count(x)]}.sort_by(&:last).reverse
   end
   
   def ranking(descripcion="")
     puts "▶︎ RANKING #{descripcion}. (x#{count})"
     cuenta = contar
-    ancho  = cuenta.map{|x|x.first.size}.max
-    total  = cuenta.map{|x|x.last}.inject(&:+)
+    ancho  = cuenta.map{|x| x.first.size}.max
+    total  = cuenta.map{|x| x.last}.inject(&:+)
     i, acumulado = 0, 0
     cuenta.each do |valor, cantidad| 
       porcentaje = 100.0 * cantidad / total
@@ -146,4 +146,5 @@ class Struct
   
   def normalizar
   end
+  
 end

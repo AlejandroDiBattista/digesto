@@ -120,20 +120,25 @@ def limpiar_sanciona(texto)
   (texto||"").strip.gsub('  ',' ').gsub(':','').gsub('.','').upcase
 end
 
+
+clasificar(:mal_sanciona){|lineas| lineas.find{|linea| limpiar_sanciona(linea)[/^SANCIONA .* CON FUERZA DE ORDENANZA$/]}}
+
+return
+p "ANALISANDO ESTRUCTURA"
 l = listar(:ordenanzas).map do |origen|
   lineas = leer(origen)
-  tmp = lineas.select{|x|x[/SANCIONA.*ORDENANZA/] }
-  if tmp.size > 1
-    puts nombre(origen)
-    pp tmp
+  #p origen
+  tmp = lineas.select{|x|x[/SANCIONA.*ORDENANZA/] }.map{|x|limpiar_sanciona(x)}
+  if tmp.first[/^SANCIONA .* CON FUERZA DE ORDENANZA$/]
+  	p nombre(origen)
   end
   tmp.first
 end
 
-puts "ANALISANDO ORDENANZAS: SANCIONA"
+p "ANALISANDO ORDENANZAS: SANCIONA"
 ll = l.map{|x| limpiar_sanciona(x) }
 aa = ll.contar
-bb = aa.select{|d,c| d[/CON.*DEL/]}
+bb = aa.select{|d,c| !d[/CON.*DEL/]}
 pp bb 
 
 # verificar_fechas()
