@@ -42,7 +42,7 @@ module Ordenanzas
     o = lineas.index{|x| x[/\AORDENANZA/i]} || 0
     v = lineas.index{|x| x[/\AVISTO:\s*\Z/i]} || 0 
     c = lineas.index{|x| x[/\ACONSIDERANDO:\s*\Z/i]} || 0
-    !(o == 1 && v == 2 && c >= 4) && e == 0
+    !(o == 1 && (v == 2|| v == 3) && c >= v+1) && e == 0
   end
 
   def falta_sanciona_ordenanza?(lineas)
@@ -110,19 +110,26 @@ def verificar_fechas()
 end
 
 def verificar_visto_considerando
-  clasificar(:visto, clasificar: true){|texto| falta_visto_considerando?(texto)}
+  clasificar(:visto, clasificar: false, limpiar: true){|texto| falta_visto_considerando?(texto)}
 end
 
 def verificar_sanciona_ordenanza
-  clasificar(:sanciona, clasificar: false){|texto| falta_sanciona_ordenanza?(texto)}
+  clasificar(:sanciona, clasificar: true){|texto| falta_sanciona_ordenanza?(texto)}
+end
+
+def verificar_mal_saciona_ordenanza
+  clasificar(:mal_sanciona){|texto| !texto.select{|x|x[/^\s*SANCION.*ORDENANZA\s*$/] }.empty?}
+end
+
+def verificar_todo
+  verificar_fechas
+  verificar_visto_considerando
+  verificar_sanciona_ordenanza
+  verificar_mal_saciona_ordenanza
 end
 
 def limpiar_sanciona(texto)
   (texto||"").strip.gsub('  ',' ').gsub(':','').gsub('.','').upcase
-end
-
-def sanciona_mal_dividido?(texto)
-	texto.select{|x|x[/^\s*SANCION.*ORDENANZA\s*$/] }.size > 0
 end
 
 def separar(lineas)
@@ -156,26 +163,32 @@ def contiene_sanciona(lineas, valor=nil, &condicion)
   separar(lineas)[:sanciona].index(&condicion)
 end
 
-# clasificar(:mal_sanciona, base: 'ordenanzas'){|lineas| sanciona_mal_dividido?(lineas)}
-# return
 
-p "ANALISANDO ESTRUCTURA"
-l = listar(:ordenanzas).map do |origen|
-  lineas = leer(origen)
-  p origen
-  tmp = lineas.select{|x|x[/SANCIONA.*ORDENANZA/] }.map{|x|limpiar_sanciona(x)}
-  if tmp.first[/^SANCIONA .* CON FUERZA DE ORDENANZA$/i]
-  	p nombre(origen)
+def analizar_estructura
+  p "ANALISANDO ESTRUCTURA"
+  l = listar(:ordenanzas).map do |origen|
+    lineas = leer(origen)
+    p origen
+    tmp = lineas.select{|x|x[/SANCIONA.*ORDENANZA/] }.map{|x|limpiar_sanciona(x)}
+    if tmp.first[/^SANCIONA .* CON FUERZA DE ORDENANZA$/i]
+    	p nombre(origen)
+    end
+    tmp.first
   end
-  tmp.first
+  p "ANALISANDO ORDENANZAS: SANCIONA"
+  aa = l.contar
+  bb = aa.select{|d,c| !d[/CON.*DEL/]}
+  pp bb 
 end
 
-p "ANALISANDO ORDENANZAS: SANCIONA"
-aa = l.contar
-bb = aa.select{|d,c| !d[/CON.*DEL/]}
-pp bb 
 
-# verificar_fechas()
-# verificar_visto_considerando()
-# reemplazar_por_limpias(:ordenanzas)
-# verificar_sanciona_ordenanza
+# verificar_todo
+verificar_visto_considerando
+# listar(:visto).map{|x|nombre(x)}.each do |destino|
+#   origen = ubicar(:ordenanzas, destino, :docx)
+#   destino = ubicar(:visto, destino, :docx)
+#   p "#{origen} > #{destino}"
+#   FileUtils.copy origen, destino
+# end
+#
+#
