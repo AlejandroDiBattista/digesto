@@ -87,7 +87,6 @@ module Ordenanzas
 
     puts " ◼︎ %0.1fs [Hay %i]" % [Time.new-inicio, listar(categoria).size]
   end
-  
 end
 
 include Ordenanzas
@@ -163,7 +162,6 @@ def contiene_sanciona(lineas, valor=nil, &condicion)
   separar(lineas)[:sanciona].index(&condicion)
 end
 
-
 def analizar_estructura
   p "ANALISANDO ESTRUCTURA"
   l = listar(:ordenanzas).map do |origen|
@@ -181,9 +179,35 @@ def analizar_estructura
   pp bb 
 end
 
+#verificar_todo
+def listar_ordenanzas_nomenclador
+	open('./calles.txt').readlines.map{|x|"%04i" % x.chomp.to_i}
+end
 
-# verificar_todo
-verificar_visto_considerando
+a = listar(:limpias).map{|x|nombre(x)}
+b = listar_ordenanzas_nomenclador
+p b.count
+p listar(:calles).count
+i = 0 
+
+b.each do |nombre|
+	origen  = ubicar(:limpias, nombre, :docx)
+	destino = ubicar(:calles, nombre, :docx)
+	if File.exist?(origen) && ! File.exist?(destino)
+		p "#{i+=1} #{origen} => #{destino}"
+		FileUtils.copy origen, destino
+	end
+end
+{	
+	"0225" => 'transcribir', 
+	"0248" => 'ausente', 
+	"0783" => 'agregada', 
+	"0890" => 'transcribir', 
+	"0911" => 'ilegible', 
+	"0913" => 'ilegible', 
+	"1289" => 'transcribir'
+}
+# verificar_visto_considerando
 # listar(:visto).map{|x|nombre(x)}.each do |destino|
 #   origen = ubicar(:ordenanzas, destino, :docx)
 #   destino = ubicar(:visto, destino, :docx)
