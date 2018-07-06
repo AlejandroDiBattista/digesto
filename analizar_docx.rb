@@ -193,7 +193,7 @@ i = 0
 b.each do |nombre|
 	origen  = ubicar(:limpias, nombre, :docx)
 	destino = ubicar(:calles, nombre, :docx)
-	if File.exist?(origen) && ! File.exist?(destino)
+	if File.exist?(origen) #&& ! File.exist?(destino)
 		p "#{i+=1} #{origen} => #{destino}"
 		FileUtils.copy origen, destino
 	end
