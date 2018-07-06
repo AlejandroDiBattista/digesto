@@ -49,19 +49,21 @@ module Ordenanzas
     lineas.select{|x| x[/SANCIONA.*ORDENANZA/]}.empty?
   end
   
-  def clasificar(categoria, clasificar: true, limpiar: true)
+  def clasificar(categoria, clasificar: true, limpiar: true, base: nil)
     inicio = Time.new
     FileUtils.mkdir_p ubicar(categoria)
-
+    base ||= :limpias 
     # Copiar para analizar
     if clasificar
-      puts " ▶︎ Copiando Ordenanzas a [#{categoria}]"
+      puts " ▶︎ Copiando Ordenanzas a [#{categoria}] (x#{listar(:limpias).size})"
     
-      listar(:limpias).each do |origen|
+      listar(base)[600..-1].each do |origen|
         destino = ubicar(categoria, nombre(origen), :docx)
+        puts " . #{nombre(origen)}"
         unless File.exist?(destino)
           texto = leer(origen)
           if yield(texto)
+            puts
             puts " > #{nombre(origen)} | [#{texto.first}]"
             FileUtils.copy(origen, destino)
           end
@@ -71,11 +73,11 @@ module Ordenanzas
     
     # Recuperar las ordenanzas limpias
     if limpiar
-      puts " ▶︎ Recuperando Ordenanzas Limpias de [#{categoria}]"
+      puts " ▶︎ Recuperando Ordenanzas Limpias de [#{categoria}] (x#{listar(categoria).size})"
       listar(categoria).each do |destino|
         texto = leer(destino)
         if !yield(texto)
-          origen = ubicar(:limpias, nombre(destino), :docx)
+          origen = ubicar(base, nombre(destino), :docx)
           puts " < #{nombre(origen)} | [#{texto.first}]"
           FileUtils.copy(destino, origen)
           FileUtils.remove destino
@@ -92,7 +94,7 @@ include Ordenanzas
 
 def reemplazar_por_limpias(categoria)
   i =  0
-  lista = listar(categoria).map{|x|nombre(x)}
+  lista  = listar(categoria).map{|x|nombre(x)}
   limpia = listar(:limpias).map{|x|nombre(x)}
 
   (lista & limpia).each do |nombre|
@@ -120,29 +122,56 @@ def limpiar_sanciona(texto)
 end
 
 def sanciona_mal_dividido?(texto)
-	tmp = texto.select{|x|x[/SANCIONA.*ORDENANZA/] }.map{|x|limpiar_sanciona(x)}
-  	tmp.size > 0 && tmp.first[/^SANCIONA .* CON FUERZA DE ORDENANZA$/]
+	texto.select{|x|x[/^\s*SANCION.*ORDENANZA\s*$/] }.size > 0
 end
 
- p "ANTES"
- clasificar(:mal_sanciona){|lineas| sanciona_mal_dividido?(lineas)}
- p "DESPUES"
+def separar(lineas)
+  v = lineas.index{|linea|linea[/^VISTO:$/i]}
+  c = lineas.index{|linea|linea[/^CONSIDERANDO:$/i]}
+  s = lineas.index{|linea|linea[/SANCIONA.*ORDENANZA.?\s*$/i]}
+  { 
+    visto:        v && c ? lineas[v+1...c] : [],
+    considerando: c && s ? lineas[c+1...s] : [], 
+    sanciona:     s ? lineas[(s+1..-1)] : []
+  }
+end
+
+def contiene(lineas, valor=nil, &condicion)
+  condicion ||= lambda{|x|x[valor]} 
+  lineas.index(&condicion)
+end
+
+def contiene_visto(lineas, valor=nil, &condicion)
+  condicion ||= lambda{|x|x[valor]} 
+  separar(lineas)[:visto].index(&condicion)
+end
+
+def contiene_considerando(lineas, valor=nil, &condicion)
+  condicion ||= lambda{|x|x[valor]} 
+  separar(lineas)[:considerando].index(&condicion)
+end
+
+def contiene_sanciona(lineas, valor=nil, &condicion)
+  condicion ||= lambda{|x|x[valor]} 
+  separar(lineas)[:sanciona].index(&condicion)
+end
+
+# clasificar(:mal_sanciona, base: 'ordenanzas'){|lineas| sanciona_mal_dividido?(lineas)}
 # return
 
 p "ANALISANDO ESTRUCTURA"
 l = listar(:ordenanzas).map do |origen|
   lineas = leer(origen)
-  #p origen
+  p origen
   tmp = lineas.select{|x|x[/SANCIONA.*ORDENANZA/] }.map{|x|limpiar_sanciona(x)}
-  if tmp.first[/^SANCIONA .* CON FUERZA DE ORDENANZA$/]
+  if tmp.first[/^SANCIONA .* CON FUERZA DE ORDENANZA$/i]
   	p nombre(origen)
   end
   tmp.first
 end
 
 p "ANALISANDO ORDENANZAS: SANCIONA"
-ll = l.map{|x| limpiar_sanciona(x) }
-aa = ll.contar
+aa = l.contar
 bb = aa.select{|d,c| !d[/CON.*DEL/]}
 pp bb 
 

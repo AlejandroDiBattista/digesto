@@ -36,4 +36,7 @@ Limpieza =
  [/CONCEJO.*SANCIONA.*ORDENANZA/,'EL CONCEJO DELIBERANTE SANCIONA CON FUERZA DE ORDENANZA'],
 ]
 
-pp Sanciona.select{|t, n| !Limpieza.any?{|a, b| t[a]}}
+a = " SANCIONAY PROMULGA CON FUERZA DE ORDENANZA "
+
+p !!a[/^\s*SANCION.*ORDENANZA\s*$/]
+# pp Sanciona.select{|t, n| !Limpieza.any?{|a, b| t[a]}}
