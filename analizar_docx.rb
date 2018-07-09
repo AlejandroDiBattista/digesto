@@ -150,14 +150,14 @@ def separar(lineas)
   v = lineas.index{|linea|linea[/^VISTO:$/i]}
   c = lineas.index{|linea|linea[/^CONSIDERANDO:$/i]}
   s = lineas.index{|linea|linea[/SANCIONA.*ORDENANZA.?\s*$/i]}
-  e = lineas.index{|linea| linea[/^REGLAMENTO DEL HONORABLE CONCEJO/i]} || lineas.index{|linea| linea[/^ANEXO/i] && linea.split.size < 4 } || lineas.index{|linea|linea[/^(CONVENIO|LIBRO PRIMERO)/i] && linea.split.size < 4} || lineas.size
+  f = lineas.index{|linea|linea[/^(ART.CULO|Art\.).+:\s*(COMUN.QUES|PUBL.QUES).*/i]} || lineas.size
   { 
     fecha:        lineas[0].split(",").last.strip,
     ordenanza:    lineas[1].split(" ").last.strip,
     visto:        v && c ? lineas[v+1...c] : [],
     considerando: c && s ? lineas[c+1...s] : [], 
-    sanciona:     s      ? lineas[s+1...e] : [],
-    extra:        e      ? lineas[e..-1]   : []
+    sanciona:     s && f ? lineas[s+1..f] : [],
+    extra:        f      ? lineas[f+1..-1] : []
   }
 end
 
@@ -183,7 +183,7 @@ end
 
 def analizar_estructura
   p "ANALISANDO ESTRUCTURA"
-  l = listar(:ordenanzas).map do |origen|
+  l = listar().map do |origen|
     lineas = leer(origen)
     p origen
     tmp = lineas.select{|x|x[/SANCIONA.*ORDENANZA/] }.map{|x|limpiar_sanciona(x)}
@@ -224,19 +224,19 @@ def copiar_calles
   }
 end
 
-def extraer_articulos(origen)
-  texto = leer(origen)
+def extraer_articulos(texto)
   sanciona = separar(texto)[:sanciona]
   numeros = sanciona.select{|x| x[/^ART.?CULO.*:/i]}.map{|x| x.split(':').first.gsub(/ART.?CULO.?/,'')}
   numeros.select{|x|x[/^\D/]}
 end
 
-def extraer_cierre(origen)
-  texto = leer(origen)
+def extraer_cierre(texto)
   sanciona = separar(texto)[:sanciona]
-  # pp separar(texto)
-  # puts "-" * 100
-  (sanciona.select{|x| x[/^ART.?CULO.*\W.*:/i]}.last || "")
+  ((sanciona.select{|x| x[/^ART.?CULO.*\W.*:/i]}.last || "").split(":").last||"").simplificar
+end
+
+def extraer_comuniquese(texto)
+  texto.select{|x| x[/^(ART.CULO|Art\.).+:\s*(COMUN.QUES|PUBL.QUES).*/i] }.last || ""
 end
 
 class String
@@ -249,56 +249,43 @@ Excluir    = ['1258', '1299', '0053','0484','0498','0549','0573','0591','0625','
 Revisar    = ['1481','1564','1589','1889', '1989', '2078','2100', '2105', '2107', '2108'] - Excluir
 Numeracion = ["PRIMERO", "SEGUNDO", "TERCERO", "CUARTO", "QUINTO", "SEXTO", "SÉPTIMO", "OCTAVO", "NOVENO", "DÉCIMO", "DÉCIMO PRIMERO", "DÉCIMO SEGUNDO", "DÉCIMO TERCERO", "DÉCIMO CUARTO", "DÉCIMO QUINTO", "DÉCIMO SEXTO", "DÉCIMO SÉPTIMO", "DÉCIMO OCTAVO", "DÉCIMO NOVENO", "VIGÉSIMO", "VIGÉSIMO PRIMERO", "VIGÉSIMO SEGUNDO", "VIGÉSIMO TERCERO", "VIGÉSIMO CUARTO", "VIGÉSIMO QUINTO", "VIGÉSIMO SEXTO", "VIGÉSIMO SÉPTIMO", "VIGÉSIMO OCTAVO", "VIGÉSIMO NOVENO", "TRIGÉSIMO", "TRIGÉSIMO PRIMERO", "TRIGÉSIMO SEGUNDO", "TRIGÉSIMO TERCERO", "TRIGÉSIMO CUARTO", "TRIGÉSIMO QUINTO", "TRIGÉSIMO SEXTO", "TRIGÉSIMO SÉPTIMO", "TRIGÉSIMO OCTAVO", "TRIGÉSIMO NOVENO", "CUADRAGÉSIMO", "CUADRAGÉSIMO PRIMERO", "CUADRAGÉSIMO SEGUNDO", "CUADRAGÉSIMO TERCERO", "CUADRAGÉSIMO CUARTO", "CUADRAGÉSIMO QUINTO", "CUADRAGÉSIMO SEXTO", "CUADRAGÉSIMO SÉPTIMO", "CUADRAGÉSIMO OCTAVO", "CUADRAGÉSIMO NOVENO", "QUINCUAGÉSIMO", "QUINCUAGÉSIMO PRIMERO", "QUINCUAGÉSIMO SEGUNDO", "QUINCUAGÉSIMO TERCERO", "QUINCUAGÉSIMO CUARTO", "QUINCUAGÉSIMO QUINTO", "QUINCUAGÉSIMO SEXTO", "QUINCUAGÉSIMO SÉPTIMO", "QUINCUAGÉSIMO OCTAVO", "QUINCUAGÉSIMO NOVENO", "SEXAGÉSIMO", "SEXAGÉSIMO PRIMERO", "SEXAGÉSIMO SEGUNDO", "SEXAGÉSIMO TERCERO", "SEXAGÉSIMO CUARTO", "SEXAGÉSIMO QUINTO", "SEXAGÉSIMO SEXTO", "SEXAGÉSIMO SÉPTIMO", "SEXAGÉSIMO OCTAVO", "SEXAGÉSIMO NOVENO", "SEPTUAGÉSIMO", "SEPTUAGÉSIMO PRIMERO", "SEPTUAGÉSIMO SEGUNDO", "SEPTUAGÉSIMO TERCERO", "SEPTUAGÉSIMO CUARTO", "SEPTUAGÉSIMO QUINTO", "SEPTUAGÉSIMO SEXTO", "SEPTUAGÉSIMO SÉPTIMO", "SEPTUAGÉSIMO OCTAVO", "SEPTUAGÉSIMO NOVENO", "OCTAGESIMO", "OCTAGESIMO PRIMERO", "OCTAGESIMO SEGUNDO", "OCTAGESIMO TERCERO", "OCTAGESIMO CUARTO", "OCTAGESIMO QUINTO", "OCTAGESIMO SEXTO", "OCTAGESIMO SÉPTIMO", "OCTAGESIMO OCTAVO", "OCTAGESIMO NOVENO", "NONAGÉSIMO", "NONAGÉSIMO PRIMERO", "NONAGÉSIMO SEGUNDO", "NONAGÉSIMO TERCERO", "NONAGÉSIMO CUARTO", "NONAGÉSIMO QUINTO", "NONAGÉSIMO SEXTO", "NONAGÉSIMO SEPTIMO", "NONAGÉSIMO OCTAVO", "NONAGÉSIMO NOVENO", "CENTÉSIMO", "CENTÉSIMO PRIMERO", "CENTÉSIMO SEGUNDO", "CENTÉSIMO TERCERO", "CENTÉSIMO CUARTO", "CENTÉSIMO QUINTO", "CENTÉSIMO SEXTO", "CENTÉSIMO SÉPTIMO", "CENTÉSIMO OCTAVO", "CENTÉSIMO NOVENO", "CENTÉSIMO DECIMO"].map(&:simplificar)
 
-def analizar_cierre
-  puts "▶︎ Analizar CIERRES"
-  b = listar(:limpias).map do |origen|
+def analizar_estructura(mensaje="", base: nil, condicion: nil, &accion)
+  base      ||= :limpias
+  condicion ||= lambda{|origen| true}
+  
+  puts " ▶︎ Analizar #{mensaje}"
+  inicio = Time.new
+  i = 0 
+  b = listar(base).select{|x|condicion.(x)}.map do |origen|
     puts
-    a=(extraer_cierre(origen).split(":").last||"").simplificar
-    puts " · #{nombre(origen)} > #{a}"
+    texto = leer(origen)
+    a=yield(texto)
+    puts "  · %4i) #{nombre(origen)} %4i => #{a}" % [i+=1, texto.size]
     a
   end
-  puts "◼︎"
+  puts " ◼︎ %0.2f" % (Time.new-inicio)
+  puts '-' * 100
+  b = b.map{|x|x.split(':').last.strip.simplificar}
+  p b.uniq.sort
+  puts '-' * 100
   b.contar.each{|x,y| puts "%3i #{x}" % y}
+end
+
+def analizar_cierre
+  analizar_estructura("CIERRE"){|texto|extraer_cierre(texto)}
 end
 
 def analizar_anexo
-  puts "▶︎ Analizar ANEXO" 
-  b = listar(:limpias).map do |origen|
-    puts
-    a=extraer_anexo(origen)
-    puts " · #{nombre(origen)} > #{a}"
-    a
-  end.flatten
-  puts "◼︎"
-  puts '-'*100
-  p b.uniq.sort
-  puts '-'*100
-  b.contar.each{|x,y| puts "%3i #{x}" % y}
+  analizar_estructura("ANEXO"){|origen|extraer_anexo(origen)}
 end
 
 def analizar_convenio
-  puts "▶︎ Analizar CONVENIO" 
-  b = listar(:limpias).map do |origen|
-    puts
-    a=extraer_convenio(origen)
-    puts " · #{nombre(origen)} > #{a}"
-    a
-  end.flatten
-  puts "◼︎"
-  puts '-'*100
-  p b.uniq.sort
-  puts '-'*100
-  b.contar.each{|x,y| puts "%3i #{x}" % y}
+  analizar_estructura("CONVENIO"){|texto|extraer_convenio(texto)}
 end
 
-# pp separar(leer(ubicar(:limpias, "1712", :docx)))
-# puts "-"*100
-# pp separar(leer(ubicar(:limpias, "0613", :docx)))
-# return
-# lista = Revisar.map{|x|ubicar(:limpias,x, :docx)}
-lista = listar(:limpias)# - ubicar(:limpias, Excluir)
-# lista = lista.select{|x|x.split('/').last >= '1560'}
+def analizar_comunica
+  analizar_estructura("COMUNICA"){|texto|extraer_comuniquese(texto)}
+end
 
-Extraer = ["ANEXO", "CONVENIO", "REGLAMENTO"]
-
-analizar_cierre
+# pp separar(leer(ubicar(:limpias,'0195')))
+analizar_comunica
