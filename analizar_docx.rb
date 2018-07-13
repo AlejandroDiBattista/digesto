@@ -291,5 +291,5 @@ end
 
 # pp separar(leer(ubicar(:limpias,'0195')))
 
-clasificar(:doble, clasificar:true){|texto|de_forma_3(texto)}
+clasificar(:transporte, clasificar:true){|texto|texto.select{|x|x[/transporte.?\s*escolar/i]}.size > 0}
 # analizar_comunica()
