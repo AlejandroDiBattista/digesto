@@ -271,13 +271,17 @@ def de_forma_1(texto)
 end
 
 def de_forma_2(texto)
-  a = texto.index{|x| x[/^ART.CULO.+:\s*PUBL.QUES.{1,4}$/i]}
+  a = texto.index{|x| x[/^ART.CULO.+:\s*PUBL.QUESE.$/i]}
   b = texto.index{|x| x[/^ART.CULO.+:\s*COMUN.QUES.*/i]}
   if a && b && (a + 1 == b) 
     texto[a..b].join('|')
   else
     nil
   end
+end
+
+def de_forma_3(texto)
+  texto.index{|x| x[/^ART.CULO.+:\s*PUBL.QUESE.$/i]}
 end
 
 
@@ -287,5 +291,5 @@ end
 
 # pp separar(leer(ubicar(:limpias,'0195')))
 
-# clasificar(:doble, clasificar:false){|texto|publi_comu(texto)}
-analizar_comunica()
+clasificar(:doble, clasificar:true){|texto|de_forma_3(texto)}
+# analizar_comunica()
