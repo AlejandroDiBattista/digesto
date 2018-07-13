@@ -11,6 +11,7 @@ module Ordenanzas
     if Array === nombre
       nombre.map{|x|"#{camino}/#{x}.#{tipo||:docx}"}
     elsif tipo || nombre
+      nombre = "%04i" % nombre  if Fixnum === nombre 
       tipo = :docx if nombre && nombre != "*" && !tipo
       "#{camino}/#{nombre||'*'}.#{tipo||'*'}"
     else
@@ -60,7 +61,7 @@ module Ordenanzas
     if clasificar
       puts " ▶︎ Copiando Ordenanzas a [#{categoria}] (x#{listar(:limpias).size})"
     
-      listar(base)[600..-1].each do |origen|
+      listar(base).each do |origen|
         destino = ubicar(categoria, nombre(origen), :docx)
         puts " . #{nombre(origen)}"
         unless File.exist?(destino)
@@ -181,23 +182,6 @@ def contiene_sanciona(lineas, valor=nil, &condicion)
   separar(lineas)[:sanciona].index(&condicion)
 end
 
-def analizar_estructura
-  p "ANALISANDO ESTRUCTURA"
-  l = listar().map do |origen|
-    lineas = leer(origen)
-    p origen
-    tmp = lineas.select{|x|x[/SANCIONA.*ORDENANZA/] }.map{|x|limpiar_sanciona(x)}
-    if tmp.first[/^SANCIONA .* CON FUERZA DE ORDENANZA$/i]
-    	p nombre(origen)
-    end
-    tmp.first
-  end
-  p "ANALISANDO ORDENANZAS: SANCIONA"
-  aa = l.contar
-  bb = aa.select{|d,c| !d[/CON.*DEL/]}
-  pp bb 
-end
-
 def listar_ordenanzas_nomenclador
 	open('./calles.txt').readlines.map{|x|"%04i" % x.chomp.to_i}
 end
@@ -213,15 +197,7 @@ def copiar_calles
   		FileUtils.copy origen, destino
   	end
   end
-  {	
-  	"0225" => 'transcribir', 
-  	"0248" => 'ausente', 
-  	"0783" => 'agregada', 
-  	"0890" => 'transcribir', 
-  	"0911" => 'ilegible', 
-  	"0913" => 'ilegible', 
-  	"1289" => 'transcribir'
-  }
+  # { "0225" => 'transcribir', "0913" => 'ilegible', }
 end
 
 def extraer_articulos(texto)
@@ -249,26 +225,27 @@ Excluir    = ['1258', '1299', '0053','0484','0498','0549','0573','0591','0625','
 Revisar    = ['1481','1564','1589','1889', '1989', '2078','2100', '2105', '2107', '2108'] - Excluir
 Numeracion = ["PRIMERO", "SEGUNDO", "TERCERO", "CUARTO", "QUINTO", "SEXTO", "SÉPTIMO", "OCTAVO", "NOVENO", "DÉCIMO", "DÉCIMO PRIMERO", "DÉCIMO SEGUNDO", "DÉCIMO TERCERO", "DÉCIMO CUARTO", "DÉCIMO QUINTO", "DÉCIMO SEXTO", "DÉCIMO SÉPTIMO", "DÉCIMO OCTAVO", "DÉCIMO NOVENO", "VIGÉSIMO", "VIGÉSIMO PRIMERO", "VIGÉSIMO SEGUNDO", "VIGÉSIMO TERCERO", "VIGÉSIMO CUARTO", "VIGÉSIMO QUINTO", "VIGÉSIMO SEXTO", "VIGÉSIMO SÉPTIMO", "VIGÉSIMO OCTAVO", "VIGÉSIMO NOVENO", "TRIGÉSIMO", "TRIGÉSIMO PRIMERO", "TRIGÉSIMO SEGUNDO", "TRIGÉSIMO TERCERO", "TRIGÉSIMO CUARTO", "TRIGÉSIMO QUINTO", "TRIGÉSIMO SEXTO", "TRIGÉSIMO SÉPTIMO", "TRIGÉSIMO OCTAVO", "TRIGÉSIMO NOVENO", "CUADRAGÉSIMO", "CUADRAGÉSIMO PRIMERO", "CUADRAGÉSIMO SEGUNDO", "CUADRAGÉSIMO TERCERO", "CUADRAGÉSIMO CUARTO", "CUADRAGÉSIMO QUINTO", "CUADRAGÉSIMO SEXTO", "CUADRAGÉSIMO SÉPTIMO", "CUADRAGÉSIMO OCTAVO", "CUADRAGÉSIMO NOVENO", "QUINCUAGÉSIMO", "QUINCUAGÉSIMO PRIMERO", "QUINCUAGÉSIMO SEGUNDO", "QUINCUAGÉSIMO TERCERO", "QUINCUAGÉSIMO CUARTO", "QUINCUAGÉSIMO QUINTO", "QUINCUAGÉSIMO SEXTO", "QUINCUAGÉSIMO SÉPTIMO", "QUINCUAGÉSIMO OCTAVO", "QUINCUAGÉSIMO NOVENO", "SEXAGÉSIMO", "SEXAGÉSIMO PRIMERO", "SEXAGÉSIMO SEGUNDO", "SEXAGÉSIMO TERCERO", "SEXAGÉSIMO CUARTO", "SEXAGÉSIMO QUINTO", "SEXAGÉSIMO SEXTO", "SEXAGÉSIMO SÉPTIMO", "SEXAGÉSIMO OCTAVO", "SEXAGÉSIMO NOVENO", "SEPTUAGÉSIMO", "SEPTUAGÉSIMO PRIMERO", "SEPTUAGÉSIMO SEGUNDO", "SEPTUAGÉSIMO TERCERO", "SEPTUAGÉSIMO CUARTO", "SEPTUAGÉSIMO QUINTO", "SEPTUAGÉSIMO SEXTO", "SEPTUAGÉSIMO SÉPTIMO", "SEPTUAGÉSIMO OCTAVO", "SEPTUAGÉSIMO NOVENO", "OCTAGESIMO", "OCTAGESIMO PRIMERO", "OCTAGESIMO SEGUNDO", "OCTAGESIMO TERCERO", "OCTAGESIMO CUARTO", "OCTAGESIMO QUINTO", "OCTAGESIMO SEXTO", "OCTAGESIMO SÉPTIMO", "OCTAGESIMO OCTAVO", "OCTAGESIMO NOVENO", "NONAGÉSIMO", "NONAGÉSIMO PRIMERO", "NONAGÉSIMO SEGUNDO", "NONAGÉSIMO TERCERO", "NONAGÉSIMO CUARTO", "NONAGÉSIMO QUINTO", "NONAGÉSIMO SEXTO", "NONAGÉSIMO SEPTIMO", "NONAGÉSIMO OCTAVO", "NONAGÉSIMO NOVENO", "CENTÉSIMO", "CENTÉSIMO PRIMERO", "CENTÉSIMO SEGUNDO", "CENTÉSIMO TERCERO", "CENTÉSIMO CUARTO", "CENTÉSIMO QUINTO", "CENTÉSIMO SEXTO", "CENTÉSIMO SÉPTIMO", "CENTÉSIMO OCTAVO", "CENTÉSIMO NOVENO", "CENTÉSIMO DECIMO"].map(&:simplificar)
 
-def analizar_estructura(mensaje="", base: nil, condicion: nil, &accion)
+def analizar_estructura(mensaje="", base: nil, datos: nil, condicion: nil, &accion)
   base      ||= :limpias
   condicion ||= lambda{|origen| true}
+  datos = Array === datos ? datos.map{|nro| ubicar(:limpias, nro, :docx)} : listar(base)
   
-  puts " ▶︎ Analizar #{mensaje}"
+  puts " ▶︎ Analizar #{mensaje} (x#{datos.size})"
   inicio = Time.new
   i = 0 
-  b = listar(base).select{|x|condicion.(x)}.map do |origen|
+  b = datos.select{|x|condicion.(x)}.map do |origen|
     puts
     texto = leer(origen)
-    a=yield(texto)
+    a = yield(texto)
     puts "  · %4i) #{nombre(origen)} %4i => #{a}" % [i+=1, texto.size]
     a
   end
   puts " ◼︎ %0.2f" % (Time.new-inicio)
   puts '-' * 100
-  b = b.map{|x|x.split(':').last.strip.simplificar}
-  p b.uniq.sort
+  c = b.map{|x|(x.split(':').last||"").strip.simplificar}
+  p c.uniq.sort
   puts '-' * 100
-  b.contar.each{|x,y| puts "%3i #{x}" % y}
+  c.contar.each{|x,y| puts "%3i #{x}" % y}
 end
 
 def analizar_cierre
@@ -283,9 +260,32 @@ def analizar_convenio
   analizar_estructura("CONVENIO"){|texto|extraer_convenio(texto)}
 end
 
-def analizar_comunica
-  analizar_estructura("COMUNICA"){|texto|extraer_comuniquese(texto)}
+def de_forma_1(texto)
+  a = texto.select{|x| x[/^(ART.CULO|Art\.).+:\s*COMUN.QUESE.*ARCH.VESE.*/i]}
+  if a.size > 0
+    # puts a if a.size > 1
+    a.last
+  else
+    nil
+  end
+end
+
+def de_forma_2(texto)
+  a = texto.index{|x| x[/^ART.CULO.+:\s*PUBL.QUES.{1,4}$/i]}
+  b = texto.index{|x| x[/^ART.CULO.+:\s*COMUN.QUES.*/i]}
+  if a && b && (a + 1 == b) 
+    texto[a..b].join('|')
+  else
+    nil
+  end
+end
+
+
+def analizar_comunica(datos=nil)
+  analizar_estructura("COMUNICA", datos: datos){|texto|de_forma_2(texto) || de_forma_1(texto)}
 end
 
 # pp separar(leer(ubicar(:limpias,'0195')))
-analizar_comunica
+
+# clasificar(:doble, clasificar:false){|texto|publi_comu(texto)}
+analizar_comunica()
