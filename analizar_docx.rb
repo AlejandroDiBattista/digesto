@@ -101,7 +101,7 @@ def reemplazar_por_limpias(categoria)
   limpia = listar(:limpias).map{|x|nombre(x)}
 
   (lista & limpia).each do |nombre|
-    origen  = ubicar(:limpias, nombre, :docx)
+    origen  = ubicar(:limpias,  nombre, :docx)
     destino = ubicar(categoria, nombre, :docx)
     puts "#{i+=1}) #{origen} =>  #{destino}"
     # FileUtils.copy(origen, destino)
@@ -113,11 +113,11 @@ def verificar_fechas()
 end
 
 def verificar_visto_considerando
-  clasificar(:visto, clasificar: false, limpiar: true){|texto| falta_visto_considerando?(texto)}
+  clasificar(:visto, clasificar: false, limpiar: true){|texto| falta_visto_considerando?(texto) }
 end
 
 def verificar_sanciona_ordenanza
-  clasificar(:sanciona, clasificar: true){|texto| falta_sanciona_ordenanza?(texto)}
+  clasificar(:sanciona, clasificar: true){|texto| falta_sanciona_ordenanza?(texto) }
 end
 
 def verificar_mal_saciona_ordenanza
@@ -146,48 +146,31 @@ def extraer_convenio(origen)
 end
 
 def separar(lineas)
-  # pp lineas
   lineas = lineas.select{|x|!x.split.empty?}
   v = lineas.index{|linea|linea[/^VISTO:$/i]}
   c = lineas.index{|linea|linea[/^CONSIDERANDO:$/i]}
   s = lineas.index{|linea|linea[/SANCIONA.*ORDENANZA.?\s*$/i]}
-  f = lineas.index{|linea|linea[/^(ART.CULO|Art\.).+:\s*(COMUN.QUES|PUBL.QUES).*/i]} || lineas.size
-  { 
+  f = lineas.index{|linea|linea[/^ART.CULO :\s*PUBL.QUESE\s*/i]} ||
+      lineas.index{|linea|linea[/^(ART.CULO|Art\.).+:\s*COMUN.QUESE.*ARCH.VESE\s*/i]} ||
+      lineas.size
+  {
     fecha:        lineas[0].split(",").last.strip,
     ordenanza:    lineas[1].split(" ").last.strip,
     visto:        v && c ? lineas[v+1...c] : [],
-    considerando: c && s ? lineas[c+1...s] : [], 
-    sanciona:     s && f ? lineas[s+1..f] : [],
+    considerando: c && s ? lineas[c+1...s] : [],
+    sanciona:     s && f ? lineas[s+1..f]  : [],
     extra:        f      ? lineas[f+1..-1] : []
   }
 end
 
-def contiene(lineas, valor=nil, &condicion)
+def contiene(texto, valor=nil, seccion=nil, &condicion)
   condicion ||= lambda{|x|x[valor]} 
-  lineas.index(&condicion)
-end
-
-def contiene_visto(lineas, valor=nil, &condicion)
-  condicion ||= lambda{|x|x[valor]} 
-  separar(lineas)[:visto].index(&condicion)
-end
-
-def contiene_considerando(lineas, valor=nil, &condicion)
-  condicion ||= lambda{|x|x[valor]} 
-  separar(lineas)[:considerando].index(&condicion)
-end
-
-def contiene_sanciona(lineas, valor=nil, &condicion)
-  condicion ||= lambda{|x|x[valor]} 
-  separar(lineas)[:sanciona].index(&condicion)
-end
-
-def listar_ordenanzas_nomenclador
-	open('./calles.txt').readlines.map{|x|"%04i" % x.chomp.to_i}
+  texto = separar(texto)[seccion] if seccion
+  texto.index(&condicion)
 end
 
 def copiar_calles
-  b = listar_ordenanzas_nomenclador
+  b = open('./calles.txt').readlines.map{|x|"%04i" % x.chomp.to_i}
   i = 0 
   b.each do |nombre|
   	origen  = ubicar(:limpias, nombre, :docx)
@@ -202,7 +185,7 @@ end
 
 def extraer_articulos(texto)
   sanciona = separar(texto)[:sanciona]
-  numeros = sanciona.select{|x| x[/^ART.?CULO.*:/i]}.map{|x| x.split(':').first.gsub(/ART.?CULO.?/,'')}
+  numeros = sanciona.select{|x| x[/^ART.CULO.*:/i]}.map{|x| x.split(':').first.gsub(/ART.CULO.?/,'')}
   numeros.select{|x|x[/^\D/]}
 end
 
@@ -225,12 +208,12 @@ Excluir    = ['1258', '1299', '0053','0484','0498','0549','0573','0591','0625','
 Revisar    = ['1481','1564','1589','1889', '1989', '2078','2100', '2105', '2107', '2108'] - Excluir
 Numeracion = ["PRIMERO", "SEGUNDO", "TERCERO", "CUARTO", "QUINTO", "SEXTO", "SÉPTIMO", "OCTAVO", "NOVENO", "DÉCIMO", "DÉCIMO PRIMERO", "DÉCIMO SEGUNDO", "DÉCIMO TERCERO", "DÉCIMO CUARTO", "DÉCIMO QUINTO", "DÉCIMO SEXTO", "DÉCIMO SÉPTIMO", "DÉCIMO OCTAVO", "DÉCIMO NOVENO", "VIGÉSIMO", "VIGÉSIMO PRIMERO", "VIGÉSIMO SEGUNDO", "VIGÉSIMO TERCERO", "VIGÉSIMO CUARTO", "VIGÉSIMO QUINTO", "VIGÉSIMO SEXTO", "VIGÉSIMO SÉPTIMO", "VIGÉSIMO OCTAVO", "VIGÉSIMO NOVENO", "TRIGÉSIMO", "TRIGÉSIMO PRIMERO", "TRIGÉSIMO SEGUNDO", "TRIGÉSIMO TERCERO", "TRIGÉSIMO CUARTO", "TRIGÉSIMO QUINTO", "TRIGÉSIMO SEXTO", "TRIGÉSIMO SÉPTIMO", "TRIGÉSIMO OCTAVO", "TRIGÉSIMO NOVENO", "CUADRAGÉSIMO", "CUADRAGÉSIMO PRIMERO", "CUADRAGÉSIMO SEGUNDO", "CUADRAGÉSIMO TERCERO", "CUADRAGÉSIMO CUARTO", "CUADRAGÉSIMO QUINTO", "CUADRAGÉSIMO SEXTO", "CUADRAGÉSIMO SÉPTIMO", "CUADRAGÉSIMO OCTAVO", "CUADRAGÉSIMO NOVENO", "QUINCUAGÉSIMO", "QUINCUAGÉSIMO PRIMERO", "QUINCUAGÉSIMO SEGUNDO", "QUINCUAGÉSIMO TERCERO", "QUINCUAGÉSIMO CUARTO", "QUINCUAGÉSIMO QUINTO", "QUINCUAGÉSIMO SEXTO", "QUINCUAGÉSIMO SÉPTIMO", "QUINCUAGÉSIMO OCTAVO", "QUINCUAGÉSIMO NOVENO", "SEXAGÉSIMO", "SEXAGÉSIMO PRIMERO", "SEXAGÉSIMO SEGUNDO", "SEXAGÉSIMO TERCERO", "SEXAGÉSIMO CUARTO", "SEXAGÉSIMO QUINTO", "SEXAGÉSIMO SEXTO", "SEXAGÉSIMO SÉPTIMO", "SEXAGÉSIMO OCTAVO", "SEXAGÉSIMO NOVENO", "SEPTUAGÉSIMO", "SEPTUAGÉSIMO PRIMERO", "SEPTUAGÉSIMO SEGUNDO", "SEPTUAGÉSIMO TERCERO", "SEPTUAGÉSIMO CUARTO", "SEPTUAGÉSIMO QUINTO", "SEPTUAGÉSIMO SEXTO", "SEPTUAGÉSIMO SÉPTIMO", "SEPTUAGÉSIMO OCTAVO", "SEPTUAGÉSIMO NOVENO", "OCTAGESIMO", "OCTAGESIMO PRIMERO", "OCTAGESIMO SEGUNDO", "OCTAGESIMO TERCERO", "OCTAGESIMO CUARTO", "OCTAGESIMO QUINTO", "OCTAGESIMO SEXTO", "OCTAGESIMO SÉPTIMO", "OCTAGESIMO OCTAVO", "OCTAGESIMO NOVENO", "NONAGÉSIMO", "NONAGÉSIMO PRIMERO", "NONAGÉSIMO SEGUNDO", "NONAGÉSIMO TERCERO", "NONAGÉSIMO CUARTO", "NONAGÉSIMO QUINTO", "NONAGÉSIMO SEXTO", "NONAGÉSIMO SEPTIMO", "NONAGÉSIMO OCTAVO", "NONAGÉSIMO NOVENO", "CENTÉSIMO", "CENTÉSIMO PRIMERO", "CENTÉSIMO SEGUNDO", "CENTÉSIMO TERCERO", "CENTÉSIMO CUARTO", "CENTÉSIMO QUINTO", "CENTÉSIMO SEXTO", "CENTÉSIMO SÉPTIMO", "CENTÉSIMO OCTAVO", "CENTÉSIMO NOVENO", "CENTÉSIMO DECIMO"].map(&:simplificar)
 
-def analizar_estructura(mensaje="", base: nil, datos: nil, condicion: nil, &accion)
+def analizar_estructura(base: nil, datos: nil, condicion: nil, &accion)
   base      ||= :limpias
   condicion ||= lambda{|origen| true}
   datos = Array === datos ? datos.map{|nro| ubicar(:limpias, nro, :docx)} : listar(base)
   
-  puts " ▶︎ Analizar #{mensaje} (x#{datos.size})"
+  puts " ▶︎ Analizar... (x#{datos.size})"
   inicio = Time.new
   i = 0 
   b = datos.select{|x|condicion.(x)}.map do |origen|
@@ -249,21 +232,23 @@ def analizar_estructura(mensaje="", base: nil, datos: nil, condicion: nil, &acci
 end
 
 def analizar_cierre
-  analizar_estructura("CIERRE"){|texto|extraer_cierre(texto)}
+  puts "★ CIERRE ★"
+  analizar_estructura{|texto|extraer_cierre(texto)}
 end
 
 def analizar_anexo
-  analizar_estructura("ANEXO"){|origen|extraer_anexo(origen)}
+  puts "★ ANEXO ★"
+  analizar_estructura{|origen|extraer_anexo(origen)}
 end
 
 def analizar_convenio
-  analizar_estructura("CONVENIO"){|texto|extraer_convenio(texto)}
+  puts "★ CONVENIO ★"
+  analizar_estructura{|texto|extraer_convenio(texto)}
 end
 
 def de_forma_1(texto)
   a = texto.select{|x| x[/^(ART.CULO|Art\.).+:\s*COMUN.QUESE.*ARCH.VESE.*/i]}
   if a.size > 0
-    # puts a if a.size > 1
     a.last
   else
     nil
@@ -284,12 +269,14 @@ def de_forma_3(texto)
   texto.index{|x| x[/^ART.CULO.+:\s*PUBL.QUESE.$/i]}
 end
 
-
 def analizar_comunica(datos=nil)
-  analizar_estructura("COMUNICA", datos: datos){|texto|de_forma_2(texto) || de_forma_1(texto)}
+  puts "★ COMUNICA ★"
+  analizar_estructura(datos: datos){|texto|de_forma_2(texto) || de_forma_1(texto)}
 end
 
 # pp separar(leer(ubicar(:limpias,'0195')))
 
-clasificar(:transporte, clasificar:true){|texto|texto.select{|x|x[/transporte.?\s*escolar/i]}.size > 0}
+clasificar(:transporte){|texto| contiene(valor: /transporte.?\s*escolar/i, seccion: 'sanciona')}
 # analizar_comunica()
+
+# clasificar(:anexo){|texto| separar(texto)[:extra].size > 0 }
