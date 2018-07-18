@@ -163,6 +163,15 @@ def separar(lineas)
   }
 end
 
+def normalizar_dinero(texto)
+  texto = texto.gsub(/\s*(\$a?)\.?\s*([0-9., ]{1,})\s*/i){|m| "#{$1.upcase} #{$2.gsub(" ","")}"}
+  texto = texto.gsub(/(\d{1,})\s*,(\d)\s*(\D)/i){|m| "#{$1},#{$2}0#{$3}"}
+  texto = texto.gsub(/(\d{1,3})\.?(\d{3})/i){|m| "#{$1}.#{$2}"}
+  texto = texto.gsub(/(\d{1,3})\.?(\d{3})\.?(\d{3})/i){|m| "#{$1}.#{$2}.#{$3}"}
+  texto = texto.gsub(/(\d{1,3})\.?(\d{3})\.?(\d{3})\.?(\d{3})/i){|m| "#{$1}.#{$2}.#{$3}.#{$4}"}
+  return texto
+end
+
 def contiene(texto, valor=nil, seccion=nil, &condicion)
   condicion ||= lambda{|x|x[valor]} 
   texto = separar(texto)[seccion] if seccion
@@ -276,7 +285,11 @@ end
 
 # pp separar(leer(ubicar(:limpias,'0195')))
 
-clasificar(:transporte){|texto| contiene(valor: /transporte.?\s*escolar/i, seccion: 'sanciona')}
+# clasificar(:transporte){|texto| contiene(valor: /transporte.?\s*escolar/i, seccion: 'sanciona')}
 # analizar_comunica()
 
 # clasificar(:anexo){|texto| separar(texto)[:extra].size > 0 }
+
+# clasificar(:dinero){|texto| y = texto.select{|x| normalizar_dinero(x)}; pp y if y.size > 0; y.size > 0 }
+
+clasificar(:perro){|texto| contiene(texto, /patentamiento.*perro/i, :sanciona) }
