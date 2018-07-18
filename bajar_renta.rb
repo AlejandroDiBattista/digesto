@@ -2,7 +2,7 @@ require 'mechanize'
 require 'pp'
 require 'csv'
 
-Login = "http://www.catastrotucuman.gov.ar/novedades/evite-multas-declarando-sus-mejoras/"
+login_smt = "http://www.catastrotucuman.gov.ar/novedades/evite-multas-declarando-sus-mejoras/"
 
 class Numeric
   def to_numero
@@ -33,7 +33,7 @@ end
 OrigenCSV = './renta.csv'
 
 module Web
-  def login
+  def login_smt
     return $buscar if $agente
 
     return unless $agent = Mechanize.new
@@ -51,10 +51,10 @@ module Web
     $buscar = $agent.page.forms.first
   end
 
-  def bajar(padron)
+  def bajar_smt(padron)
     inicio = Time.new
     salida = {padron: padron}
-    if login()
+    if login_smt()
       $buscar['frmpadron'] = padron
       $buscar.submit
 
@@ -70,6 +70,7 @@ module Web
     puts " • Bajado [#{padron}] #{salida[:total]||0 > 0 ?  '😀' : '😢' } %0.1fs" % (Time.new - inicio)
     salida
   end
+  
 end
 
 include Web
@@ -117,7 +118,7 @@ class BaseDatos
     inicio = Time.new
     puts "▶︎ Buscando... (x#{padrones.size})" if padrones.size > 1
     padrones.each do |padron|
-      agregar( Web.bajar(padron)) unless @lista[padron]
+      agregar( Web.bajar_smt(padron))# unless @lista[padron]
     end
     puts "◼︎ %0.1fs" % (Time.new-inicio) if padrones.size > 1 
   end
@@ -155,7 +156,41 @@ end
 
 db = BaseDatos.new
 db.leer
-db.actualizar
-db.buscar((180_068..180_080).to_a)
+
+a = db.map(&:padron)
+p a 
+db.buscar(a)
 
 db.escribir
+
+def bajar_yb(padron)
+  # origen = "http://boletas.yerbabuena.gob.ar"
+  # origen = 'http://190.221.34.58'
+  
+  agente = Mechanize.new
+  page = agente.post('http://190.221.34.58/busqueda.php', {"padron" => "81330"})
+  pp page.links
+  
+  # pp $agent_yb.page
+  #
+  # form = $agent_yb.page.forms.first
+  # form['padron'] = padron
+  # form.submit
+  #
+  # puts "-" * 100
+  # pp $agent_yb.page
+  # puts "-" * 100
+  #
+  # lista = $agent_yb.page#.css("table.table-striped td").map{|x| x.text}
+  # pp lista
+  # p lista.css('table')
+  # if salida[:existe] = (lista.size == 29)
+  #   salida[:terreno] = lista[17].to_numero
+  #   salida[:mejoras] = lista[19].to_numero
+  #   salida[:ph]      = lista[21].to_numero
+  #   salida[:total]   = lista[25].to_numero
+  # end
+  # salida[:bajado] = true
+end
+
+bajar_yb(81330)
