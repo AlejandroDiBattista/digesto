@@ -95,7 +95,7 @@ module Enumerable
       end.each(&:join)
     end
 
-    items.map{|x| resultado[x]}
+    items.sort.map{|x| resultado[x]}
   end
   
   def contar
@@ -136,7 +136,6 @@ class Hash
 end
 
 class Struct
-  
   def cargar(datos)
     datos = datos.normalizar
     members.each{|k, v| self[k.to_sym] = datos[k.to_sym]}
@@ -146,5 +145,5 @@ class Struct
   
   def normalizar
   end
-  
 end
+
