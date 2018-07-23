@@ -13,6 +13,10 @@ class Object
 end
 
 class String
+  def limpiar_espacios
+    gsub(/\s+/,' ').strip
+  end
+  
   def to_importe
     self.gsub(',','.').gsub(/[^0-9.]/,'').to_f
   end
@@ -33,6 +37,17 @@ class Time
   
   def to_fecha
     self.to_s.split[0]
+  end
+  
+  def info_duracion
+    d = duracion
+    m = (d / 60).to_i
+    h = (m / 60).to_i
+    if m == 0 
+      "⧗ %0.1fs" % d
+    else
+      "⧗ #{h}h #{m % 60}m #{d.to_i % 60}"
+    end.gsub("0h","").gsub("0m","").strip
   end
 end
 
@@ -70,7 +85,7 @@ module Kernel
       yield
       duracion = $nivel.last
     end
-    puts "◼︎ %0.1fs" % [Time.new - duracion]
+    puts "◼︎ #{duracion.info_duracion}"
   end
 end
 
