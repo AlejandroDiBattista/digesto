@@ -1,4 +1,5 @@
 require 'pp'
+require 'csv'
 
 class Numeric
   def hora
@@ -51,6 +52,45 @@ class Time
   end
 end
 
+class Numeric
+  def empty?
+    self == 0
+  end
+end
+
+class NilClass
+  def empty?
+    true
+  end
+end
+
+class TrueClass
+  def empty? 
+    false
+  end
+end
+
+class FalseClass
+  def empty?
+    true
+  end
+end
+
+class Hash
+  def normalizar
+    keys.select{|x|String === x}.each do |x|
+      self[x.to_sym] = self[x]
+      delete(x)
+    end
+    self
+  end
+  
+  def filtrar(*campos)
+    (keys - campos.flatten).each{|campo| delete campo}
+    self
+  end
+end
+
 module Kernel
   require 'thread'
   
@@ -79,26 +119,27 @@ module Kernel
     end
   end
   
-  def medir(descripcion=nil)
+  def medir(descripcion=nil, compacto=false)
     duracion = Time.new
-    puts "▶︎ #{descripcion}" do 
-      yield
+    n = nil 
+    puts compacto ? "" : "▶︎ #{descripcion}" do 
+      n = yield
       duracion = $nivel.last
     end
-    puts "◼︎ #{duracion.info_duracion}"
+    puts "#{compacto ? "⦿ "+ descripcion : "◼︎"} #{duracion.info_duracion} #{n ? "(x #{n})" : ""}"
   end
 end
 
 module Enumerable
-  def procesar(titulo="Procesando...", hilos=10)
+  
+  def procesar(titulo = "Procesando...", hilos = 10)
     items = map{|x|x}
     resultado = {}
 
     inicio, i, n = Time.new, 0, items.size
-    medir "#{titulo} [x #{n}#{hilos==1 ? "" : "/#{hilos}"}]" do 
+    medir "#{titulo} [x #{n}#{hilos == 1 ? "" : "/#{hilos}"}]" do 
       queue = Queue.new
       items.each{|item| queue << item }
-    
       hilos.times.map do
         Thread.new do
           until queue.empty?
@@ -108,21 +149,40 @@ module Enumerable
           end
         end
       end.each(&:join)
+      resultado.count
     end
 
-    items.sort.map{|x| resultado[x]}
+    items.sort.map{|x| resultado[x]}.compact
   end
   
   def contar
-    uniq.map{|x| [x, count(x)]}.sort_by(&:last).reverse
+    c = Hash.new(0)
+    each{|x| c[x] += 1 }
+    c.to_a.sort_by(&:last).reverse
   end
   
-  def ranking(descripcion="")
+  def ranking(descripcion="", tope=nil)
     puts "▶︎ RANKING #{descripcion}. (x#{count})"
-    cuenta = contar
-    ancho  = cuenta.map{|x| x.first.size}.max
-    total  = cuenta.map{|x| x.last}.inject(&:+)
+    cuenta = self.contar
+    ancho  = cuenta.map(&:first).map(&:size).max
+    total  = cuenta.map(&:last).suma
+    tope ||= cuenta.size
     i, acumulado = 0, 0
+    cuenta.first(tope).each do |valor, cantidad| 
+      porcentaje = 100.0 * cantidad / total
+      acumulado += porcentaje
+      puts( " ✧ %3i) %-#{ancho}s  %5i  %3.0f%%  %3.0f%%" % [i +=1, valor, cantidad, porcentaje, acumulado ])
+    end
+    puts "◼︎"
+  end
+
+  def listar(descripcion="")
+    puts "▶︎ LISTADO #{descripcion}. (x#{count})"
+    cuenta = contar
+    ancho  = cuenta.map(&:first).map(&:size).max
+    total  = cuenta.map(&:last).suma
+    i, acumulado = 0, 0
+    cuenta = cuenta.sort_by(&:first)
     cuenta.each do |valor, cantidad| 
       porcentaje = 100.0 * cantidad / total
       acumulado += porcentaje
@@ -130,35 +190,44 @@ module Enumerable
     end
     puts "◼︎"
   end
+  
+  def empty?
+    count == 0
+  end
+  
+  def suma
+    inject(&:+)
+  end
+  
+  def promedio
+    empty? ? 0 : suma / count
+  end
 end
 
-class Hash
-  def normalizar
-    keys.each do |x|
-      if String === x 
-        self[x.to_sym] = self[x]
-        delete(x)
-      end
+class CSV
+  def self.name(nombre)
+    nombre = nombre.to_s
+    nombre += '.csv' unless nombre['.csv']
+    nombre
+  end
+  
+  def self.leer(nombre)
+    if File.exist?(name(nombre))
+      datos  = CSV.read(nombre, 'r:ISO-8859-1:UTF-8', col_sep: ';')
+      campos = datos.shift.map(&:to_sym)
+      datos.map{|dato| Hash[ campos.zip(dato) ] }
+    else
+      []
     end
-    self
   end
   
-  def filtrar(campos)
-    borrar = keys - campos
-    borrar.each{|k| delete k}
-    self
-  end
-end
-
-class Struct
-  def cargar(datos)
-    datos = datos.normalizar
-    members.each{|k, v| self[k.to_sym] = datos[k.to_sym]}
-    normalizar
-    self
+  def self.escribir(datos, nombre)
+    datos = datos.compact
+    campos = datos.map{|x|x.keys}.flatten.uniq
+    CSV.open(name(nombre), 'w:ISO-8859-1:UTF-8', col_sep: ';') do |f|
+      f << campos
+      datos.each{|dato| f << campos.map{|campo| dato[campo]} }
+    end
   end
   
-  def normalizar
-  end
 end
-
