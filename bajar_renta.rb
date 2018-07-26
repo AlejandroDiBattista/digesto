@@ -2,6 +2,15 @@ require 'open-uri'
 require 'pdf-reader'
 require './base'
 
+class String
+  def importe
+    gsub('$','').to_f
+  end
+  def numero
+    gsub(/\D/,'').to_i
+  end
+end
+
 module Web  
   
   def boleta(nro, verboso=false)
@@ -10,7 +19,15 @@ module Web
 
     reader = PDF::Reader.new(open(url))
     lineas = reader.pages.first.text.split("\n").first(30)
-    datos  = { padron: lineas[7].split[2], valuacion: lineas[29].split[2].gsub('$', '').to_f, boleta: nro }
+    if verboso
+      lineas.each_with_index do |linea, i|
+        print " %3i) " % (i)
+        puts "[#{linea}] > #{linea.split}"
+      end
+    end
+    lineas = lineas.map{|x|x.split}
+    datos  = { padron: lineas[7][2], valuacion: lineas[29][2].importe, boleta: nro, 
+               importe: lineas[9][-2].importe, mes: lineas[7][-3].numero, año: lineas[7][-1].numero }
     pp(datos) if verboso
 
     datos
@@ -110,5 +127,7 @@ end
 
 # bajar_boletas 9_260_000, 9_400_000
 
-a = CSV.leer('catastro.csv')
-p a.map{|x|x[:valuacion]}.sort.first(100)
+# a = CSV.leer('catastro.csv')
+# p a.map{|x|x[:valuacion]}.sort.first(100)
+
+boleta(9182130, true)
