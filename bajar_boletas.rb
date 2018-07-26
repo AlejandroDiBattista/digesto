@@ -5,8 +5,9 @@ require 'pdf-reader'
 
 class String
   def importe
-    gsub('$','').to_f
+    gsub('$','').gsub('.','').gsub(',', '.').to_f
   end
+  
   def numero
     gsub(/\D/,'').to_i
   end
@@ -45,7 +46,7 @@ def boletas(padron)
   $agente.post('http://boletas.yerbabuena.gob.ar/busqueda.php', "padron" => padron)
   $agente.page.css("table tr").map(&:text)[1..-1].map do |linea|
     boleta = Hash[[:boleta, :año, :mes, :vencimiento, :monto, :pagada].zip(linea.split)]
-
+    # pp boleta
     boleta[:pagada]= boleta[:pagada]=="Pagada"
     boleta[:mes]   = boleta[:mes].numero
     boleta[:año]   = boleta[:año].numero
@@ -60,11 +61,11 @@ end
 
 # boletas(4679294).each{|x|p x }
 # puts '-' * 100
-# boletas(4679296).each{|x|p x }
+boletas(583320).each{|x|p x }
 
-def bajar_boletas_completas
+def bajar_boletas_completas(rango)
   padrones = CSV.leer('boletas.csv').map{|x|x[:padron]}.uniq
-  b = padrones.procesar("Bajando Boletas",100){|padron| boletas(padron)}.flatten
+  b = padrones[rango].procesar("Bajando Boletas",100){|padron| boletas(padron)}.flatten
   CSV.escribir(b, 'boletas_completas.csv')
 end
 
@@ -79,14 +80,18 @@ def leer_boleas_completas
   datos
 end
 
-datos = leer_boleas_completas().select{|x|x[:mes] == 99}
+def analizar_boletas
+  datos = leer_boleas_completas().select{|x|x[:mes] == 99}
 
-puts "Pagado $:   %10.2f" % (a = datos.select{|x|x[:pagado]}.map{|x|x[:monto]}.suma||0)
-puts "Adeudado $: %10.2f" % (b = datos.select{|x|!x[:pagado]}.map{|x|x[:monto]}.suma||0)
-puts "Pagado #:   #{c = datos.select{|x|x[:pagado]}.count}"
-puts "Adeudado #: #{d = datos.select{|x|!x[:pagado]}.count}"
-puts "$  %0.2f%" % (100.0*(a/(a+b)))
-puts "#  %0.2f%" % (100.0*(c/(c+d)))
+  puts "Pagado $:   %10.2f" % (a = datos.select{|x|x[:pagado]}.map{|x|x[:monto]}.suma||0)
+  puts "Adeudado $: %10.2f" % (b = datos.select{|x|!x[:pagado]}.map{|x|x[:monto]}.suma||0)
+  puts "Pagado #:   #{c = datos.select{|x|x[:pagado]}.count}"
+  puts "Adeudado #: #{d = datos.select{|x|!x[:pagado]}.count}"
+  puts "$  %0.2f%" % (100.0*(a/(a+b)))
+  puts "#  %0.2f%" % (100.0*(c/(c+d)))
 
-puts "$ c/u %7.2f%" % (a/c)
-puts "# c/u %7.2f%" % (b/d)
+  puts "$ c/u %7.2f%" % (a/c)
+  puts "# c/u %7.2f%" % (b/d)
+end
+
+bajar_boletas_completas 0..-100.0

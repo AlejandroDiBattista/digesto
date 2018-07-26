@@ -11,7 +11,7 @@ module Ordenanzas
     if Array === nombre
       nombre.map{|x|"#{camino}/#{x}.#{tipo||:docx}"}
     elsif tipo || nombre
-      nombre = "%04i" % nombre  if Fixnum === nombre 
+      nombre = "%04i" % nombre  if Integer === nombre 
       tipo = :docx if nombre && nombre != "*" && !tipo
       "#{camino}/#{nombre||'*'}.#{tipo||'*'}"
     else
