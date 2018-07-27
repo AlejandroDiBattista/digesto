@@ -311,7 +311,8 @@ end
 # clasificar(:prorroga){|texto| contiene(texto, /prorroga/i, :sanciona) }      #38
 # clasificar(:suspende){|texto| contiene(texto, /suspende/i, :sanciona) }       #9
 # clasificar(:subroga){|texto| contiene(texto, /subroga/i, :sanciona) }         #1
-clasificar(:adhiere){|texto| contiene(texto, /adhiere/i, :sanciona) }        #26
-clasificar(:reglamenta){|texto| contiene(texto, /reglamenta/i, :reglamenta) }   #87
-clasificar(:ratifica){|texto| contiene(texto, /ratifica/i, :reglamenta) }   #16
-clasificar(:rectifica){|texto| contiene(texto, /rectifica/i, :reglamenta) }   #8
+# clasificar(:adhiere){|texto| contiene(texto, /adhiere/i, :sanciona) }        #26
+# clasificar(:reglamenta){|texto| contiene(texto, /reglamenta/i, :sanciona) }   #87
+# clasificar(:ratifica){|texto| contiene(texto, /ratifica/i, :sanciona) }   #16
+# clasificar(:rectifica){|texto| contiene(texto, /rectifica/i, :sanciona) }   #8
+clasificar(:ley_nacional){|texto| contiene(texto, /ley nacional/i, :sanciona) }   #8
