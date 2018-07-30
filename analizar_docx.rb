@@ -228,7 +228,7 @@ def analizar_estructura(base: nil, datos: nil, condicion: nil, &accion)
   b = datos.select{|x|condicion.(x)}.map do |origen|
     puts
     texto = leer(origen)
-    a = yield(texto)
+    a = yield(texto, origen)
     puts "  · %4i) #{nombre(origen)} %4i => #{a}" % [i+=1, texto.size]
     a
   end
@@ -292,4 +292,81 @@ end
 
 # clasificar(:dinero){|texto| y = texto.select{|x| normalizar_dinero(x)}; pp y if y.size > 0; y.size > 0 }
 
-clasificar(:perro){|texto| contiene(texto, /patentamiento.*perro/i, :sanciona) }
+# clasificar(:perro){|texto| contiene(texto, /patentamiento.*perro/i, :sanciona) }
+# a = listar(:limpias).map do |o|
+#   texto = leer(o)
+#   decreta = texto.select{|x| x[/^ART.*queda.*deroga.*toda/]}
+#   puts "#{o} > [#{decreta}]"
+#   decreta
+# end.flatten.compact
+#
+# pp a
+# pp a.count
+
+#Total >> 1529
+# clasificar(:modifica){|texto| contiene(texto, /modifica/i, :sanciona) }   #159
+# clasificar(:sustituye){|texto| contiene(texto, /sustituye/i, :sanciona) }   #4
+# clasificar(:incompora){|texto| contiene(texto, /incorpora/i, :sanciona) }  #56
+# clasificar(:deroga){|texto| contiene(texto, /deroga|abroga/i, :sanciona) } #62
+# clasificar(:prorroga){|texto| contiene(texto, /prorroga/i, :sanciona) }      #38
+# clasificar(:suspende){|texto| contiene(texto, /suspende/i, :sanciona) }       #9
+# clasificar(:subroga){|texto| contiene(texto, /subroga/i, :sanciona) }         #1
+# clasificar(:adhiere){|texto| contiene(texto, /adhiere/i, :sanciona) }        #26
+# clasificar(:reglamenta){|texto| contiene(texto, /reglamenta/i, :sanciona) }   #87
+# clasificar(:ratifica){|texto| contiene(texto, /ratifica/i, :sanciona) }   #16
+# clasificar(:rectifica){|texto| contiene(texto, /rectifica/i, :sanciona) }   #8
+# clasificar(:ley_nacional){|texto| contiene(texto, /ley nacional/i, :sanciona) }   #8
+
+def generar_palabras
+  a = listar(:limpias).map do |o|
+    puts o
+    leer(o).map{|x|x.downcase.split(/[^[:alpha:]]/i)}.flatten.select{|x|x.size > 2}
+  end.flatten
+
+  puts "*"
+
+  b = a.contar.map{|x|Hash[ [:palabra, :frecuencia].zip(x) ]}
+  p b.size
+  p b.select{|x|x[:frecuencia] > 1}
+  CSV.escribir(b, 'palabras.csv')
+end
+
+def eliminar_plural
+  a = CSV.leer('palabras.csv')
+
+  b = {}
+  a.each{|x|b[x[:palabra]] = x[:frecuencia].to_i}
+
+  puts b.size
+  b.keys.each do |k|
+    ks = k+"s"
+    if b[k] && b[ks]
+      # p k 
+      b[k] += b[ks]
+      p [k, ks, b[k], b[k]-b[ks],b[ks]]
+      b.delete k
+    end
+  end
+  puts b.size
+  pp b.first(100)
+  CSV.escribir(c, 'singular.csv')
+end
+
+class String
+  def simplificar
+    downcase.
+      gsub('Á','a').gsub('É','e').gsub('Í','i').gsub('Ó','o').gsub('Ú','u').
+      gsub('á','a').gsub('é','e').gsub('í','i').gsub('ó','o').gsub('ú','u').
+      gsub(/\s+/,' ').strip.
+      gsub(/[^a-zñ0-9 ]/, '')
+  end
+end
+
+p "ARTÍCULO".downcase
+datos = []
+listar(:limpias).sort.procesar do |origen|
+  texto = leer(origen)
+  datos << {nombre: nombre(origen), texto: separar(texto)[:sanciona].join(' ').simplificar}
+end
+#
+CSV.escribir(datos, 'indice.csv')

@@ -94,4 +94,6 @@ def analizar_boletas
   puts "# c/u %7.2f%" % (b/d)
 end
 
-bajar_boletas_completas 0..-100.0
+# bajar_boletas_completas 0..-100.0
+
+pp boletas(135816)

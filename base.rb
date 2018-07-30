@@ -25,6 +25,10 @@ class String
   def to_id
     gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase.to_sym
   end
+  
+  def limpiar_csv
+    gsub(';','').gsub('"','').gsub(' ',' ')
+  end
 end
 
 class Time
@@ -215,6 +219,7 @@ class CSV
     if File.exist?(name(nombre))
       datos  = CSV.read(nombre, 'r:ISO-8859-1:UTF-8', col_sep: ';')
       campos = datos.shift.map(&:to_sym)
+      datos.first(10).each{|r|p r.to_h}
       datos.map{|dato| Hash[ campos.zip(dato) ] }
     else
       []
@@ -226,8 +231,7 @@ class CSV
     campos = datos.map{|x|x.keys}.flatten.uniq
     CSV.open(name(nombre), 'w:ISO-8859-1:UTF-8', col_sep: ';') do |f|
       f << campos
-      datos.each{|dato| f << campos.map{|campo| dato[campo]} }
+      datos.each{|dato| f << campos.map{|campo|puts dato[campo]; dato[campo]} }
     end
   end
-  
 end
