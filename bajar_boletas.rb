@@ -45,11 +45,11 @@ $agente = Mechanize.new
 def boletas(padron)
   $agente.post('http://boletas.yerbabuena.gob.ar/busqueda.php', "padron" => padron)
   $agente.page.css("table tr").map(&:text)[1..-1].map do |linea|
-    boleta = Hash[[:boleta, :año, :mes, :vencimiento, :monto, :pagada].zip(linea.split)]
+    boleta = Hash[[:boleta, :anio, :mes, :vencimiento, :monto, :pagada].zip(linea.split)]
     # pp boleta
     boleta[:pagada]= boleta[:pagada]=="Pagada"
     boleta[:mes]   = boleta[:mes].numero
-    boleta[:año]   = boleta[:año].numero
+    boleta[:anio]   = boleta[:anio].numero
 
     boleta[:monto] = monto(boleta[:boleta]) if boleta[:pagada]
     boleta[:monto] = boleta[:monto].importe
@@ -58,31 +58,38 @@ def boletas(padron)
   end
 end
 
-
 # boletas(4679294).each{|x|p x }
 # puts '-' * 100
-boletas(583320).each{|x|p x }
+# boletas(9333883).each{|x|p x }
 
-def bajar_boletas_completas(rango)
-  padrones = CSV.leer('boletas.csv').map{|x|x[:padron]}.uniq
-  b = padrones[rango].procesar("Bajando Boletas",100){|padron| boletas(padron)}.flatten
-  CSV.escribir(b, 'boletas_completas.csv')
+def bajar_boletas_completas(grupo=0, bloque = 1000)
+  rango = grupo > 0  ? (grupo-1)*bloque...grupo*bloque : 0..-1
+  destino = "boletas_completas_#{grupo}.csv"
+  unless File.exist?(destino)
+    padrones = CSV.leer('boletas.csv').map{|x|x[:padron]}.uniq
+    nuevas = padrones[rango].procesar("Bajando Boletas #{rango} -> #{destino}", 100){|padron| boletas(padron)}.flatten
+  
+    CSV.escribir(nuevas, destino)
+  else
+    puts "El archivo ya existía > #{grupo}"
+  end
 end
+
 
 def leer_boleas_completas
   datos = CSV.leer('boletas_completas.csv')#.first(10)
   datos.each do |x|
-    x[:monto] = x[:monto].to_f
-    x[:mes] = x[:mes].to_f
-    x[:año] = x[:año].to_f
-    x[:pagado] = (x[:pagado] == "true")
+    x[:monto]  = x[:monto].to_f
+    x[:mes]    = x[:mes].to_i
+    x[:anio]   = x[:anio].to_i
+    x[:pagado] = x[:pagado] == "true"
   end
   datos
 end
 
 def analizar_boletas
   datos = leer_boleas_completas().select{|x|x[:mes] == 99}
-
+  pp datos.first(10)
   puts "Pagado $:   %10.2f" % (a = datos.select{|x|x[:pagado]}.map{|x|x[:monto]}.suma||0)
   puts "Adeudado $: %10.2f" % (b = datos.select{|x|!x[:pagado]}.map{|x|x[:monto]}.suma||0)
   puts "Pagado #:   #{c = datos.select{|x|x[:pagado]}.count}"
@@ -94,6 +101,11 @@ def analizar_boletas
   puts "# c/u %7.2f%" % (b/d)
 end
 
-# bajar_boletas_completas 0..-100.0
+def consolidad_boletas_completas
+  datos = Dir['boletas_completas*.csv'].select{|x|x[/\d/]}.map{|origen| CSV.leer(origen)}
+  CSV.escribir(datos.flatten.uniq, 'boletas_completas.csv')
+end
 
-pp boletas(135816)
+# (1..26).each{|i|bajar_boletas_completas( i, 1000) }
+
+consolidad_boletas_completas
