@@ -6,6 +6,7 @@ require './base'
 module Ordenanzas
 
   def ubicar(camino, nombre=nil, tipo=nil)
+    camino = camino.join('/') if Array === camino
     camino = camino.to_s
     camino = "./#{camino}" unless camino['/']
     if Array === nombre
@@ -28,6 +29,7 @@ module Ordenanzas
   end
   
   def carpeta(camino)
+    camino = camino.join('/') if Array === camino
     File.dirname(camino)
   end
   
@@ -35,7 +37,12 @@ module Ordenanzas
     b = Docx::Document.open(origen)
     b.paragraphs.map(&:text)
   end
-  
+
+  def tiene_tabla?(origen )  
+    b = Docx::Document.open(origen)
+    b.tables.size > 0 
+  end
+
   def fecha_invalida?(lineas)
     lineas.first[/\AYerba Buena, [0-3][0-9] de \w+ de [12][0-9][0-9][0-9]\Z/i].nil?
   end
@@ -55,6 +62,7 @@ module Ordenanzas
   
   def clasificar(categoria, clasificar: true, limpiar: true, base: nil)
     inicio = Time.new
+    categoria = categoria.join('/') if Array === categoria
     FileUtils.mkdir_p ubicar(categoria)
     base ||= :limpias 
     # Copiar para analizar
@@ -66,7 +74,7 @@ module Ordenanzas
         puts " . #{nombre(origen)}"
         unless File.exist?(destino)
           texto = leer(origen)
-          if yield(texto)
+          if yield(texto, origen)
             puts
             puts " > #{nombre(origen)} | [#{texto.first}]"
             FileUtils.copy(origen, destino)
@@ -362,11 +370,39 @@ class String
   end
 end
 
-p "ARTÍCULO".downcase
-datos = []
-listar(:limpias).sort.procesar do |origen|
-  texto = leer(origen)
-  datos << {nombre: nombre(origen), texto: separar(texto)[:sanciona].join(' ').simplificar}
+def generar_indice
+  datos = []
+  listar(:limpias).sort.procesar do |origen|
+    texto = leer(origen)
+    datos << {nombre: nombre(origen), texto: separar(texto)[:sanciona].join(' ').simplificar}
+  end
+  CSV.escribir(datos, 'indice.csv')
 end
-#
-CSV.escribir(datos, 'indice.csv')
+
+
+# p tablas?('limpias/1814.docx')
+# clasificar(:tablas){|_, origen| tiene_tabla?(origen)}
+
+clasificar([:excepcion, :prueba]){|texto| contiene(texto, /v.a de excepci.n/i, :sanciona) }   #159
+
+a = listar(:excepcion).map do |origen|
+  texto = leer(origen)
+  fecha = texto.first.split(',').last
+  ordenanza = nombre(origen)
+  articulo = (separar(texto)[:sanciona].select{|x| x[/v.a de excepci.n/i]}.first||"").limpiar_csv
+    .gsub("\u201C",'*')
+    .gsub("\u201D",'*')
+    .gsub("\u2013",'*')
+    .gsub("\u2019",'*')
+    .gsub("\u2030",'*')
+    
+    
+  
+  if articulo["\u201C"] 
+    puts ">>>> #{ordenanza}"
+  end
+  puts "#{ordenanza} > #{fecha} > [#{articulo[0..100]}]"
+  {fecha: fecha, ordenanza: ordenanza, texto: articulo}
+end
+
+CSV.escribir(a, 'excepciones.csv')

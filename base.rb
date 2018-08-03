@@ -29,6 +29,10 @@ class String
   def limpiar_csv
     gsub(';','').gsub('"','').gsub(' ',' ')
   end
+  
+  def simplificar
+    gsub(/[^a-záéíóúñ .()-]/i, '')
+  end
 end
 
 class Time
