@@ -14,12 +14,21 @@ class Object
 end
 
 class String
+  
+  def importe
+    gsub('$', '').gsub('.', '').gsub(',', '.').to_f
+  end
+
+  def numero
+    gsub(/\D/, '').to_i
+  end
+  
   def limpiar_espacios
-    gsub(/\s+/,' ').strip
+    gsub(/\s+/, ' ').strip
   end
   
   def to_importe
-    self.gsub(',','.').gsub(/[^0-9.]/,'').to_f
+    self.gsub(',', '.').gsub(/[^0-9.]/, '').to_f
   end
 
   def to_id
@@ -29,10 +38,14 @@ class String
   def limpiar_csv
     gsub(';','').gsub('"','').gsub(' ',' ')
   end
-  
+    
   def simplificar
-    gsub(/[^a-záéíóúñ .()-]/i, '')
+    gsub('Á','a').gsub('É','e').gsub('Í','i').gsub('Ó','o').gsub('Ú','u').
+    gsub('á','a').gsub('é','e').gsub('í','i').gsub('ó','o').gsub('ú','u').
+    gsub(/\s+/,' ').strip.downcase.
+    gsub(/[^a-zñ0-9 .()-]/i, '')
   end
+
 end
 
 class Time
@@ -239,4 +252,109 @@ class CSV
   end
 end
 
-puts "👍🏻 BASE.rb Cargado"
+class Struct
+  
+  def self.cargar(datos)
+    new.tap{|x| x.cargar(datos)}
+  end
+  
+  def cargar(datos)
+    datos = datos.normalizar
+    members.each{|k, v| self[k.to_sym] = datos[k.to_sym]}
+    normalizar
+    self
+  end
+
+  def id
+    self[members.first]
+  end
+  
+  def normalizar
+  end
+  
+  def valido?
+    true
+  end
+  
+  def to_a
+    members.map{|campo| self[campo]}
+  end
+  
+  def to_h
+    Hash[members.map{|campo| [campo, self[campo]]}].normalizar
+  end
+end
+
+class Almacen
+  include Enumerable
+  
+  attr_accessor :clase, :datos
+  
+  def initialize(clase)
+    self.clase = clase
+    limpiar
+    self
+  end
+  
+  def registrar(clase)
+    self.clase = clase
+  end
+  
+  def agregar(datos)
+    datos = self.clase.new.cargar(datos) if Hash === datos 
+    self.datos ||= {}
+    self.datos[datos.id] = datos
+  end
+  
+  def limpiar
+    self.datos = {}
+  end
+  
+  def leer(nombre=nil)
+    nombre = nombre_csv(nombre, :renta)
+    puts nombre
+    medir "Leer [#{nombre}]", true do 
+      CSV.leer(nombre).each{|dato| agregar(dato) }
+      count
+    end
+    self
+  end
+    
+  def escribir(nombre=nil)
+    nombre = nombre_csv(nombre, :renta)
+    medir "Escribir [#{nombre}]", true do 
+      CSV.escribir(map(&:to_h), nombre)
+      count
+    end
+  end
+    
+  def each
+    datos.values.each{|dato|yield dato}
+  end
+  
+  def ids
+    self.datos.keys
+  end
+  
+  def campos
+    @campos ||= clase.new.members
+  end
+  
+  def campo_id
+    campos.first
+  end
+  
+  def nombre_csv(nombre, carpeta=nil)
+    nombre ||= clase.name.downcase
+    nombre += (nombre['.'] ? '' : '.csv')
+    nombre = "#{carpeta}/#{nombre}" if carpeta
+    
+    nombre
+  end
+  
+  def valores(campo)
+    map{|x|x[campo]}
+  end
+end
+
+puts " 👍🏻 BASE.rb Cargado"
