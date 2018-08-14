@@ -23,7 +23,18 @@ class Date
   end
 end
 
+class Object
+  def boolean
+    self
+  end
+end
+
 class String
+  
+  def boolean
+    tmp = downcase.strip
+    tmp == "true" || self == '1' || self == 'si' || self == 'yes' || self == 's' || self == 'y' || self == 'pagada'
+  end
   
   def fecha
       Date.strptime(self, '%d/%m/%Y')
@@ -64,6 +75,13 @@ class String
     gsub(/[^a-zñ0-9 .()-]/i, '')
   end
 
+  def limpiar_nombre
+    simplificar.split.map(&:capitalize).join(' ')
+  end
+  
+  def limpiar_domicilio
+    simplificar.gsub(/^\W/,'').limpiar_espacios.capitalize
+  end
 end
 
 class Time

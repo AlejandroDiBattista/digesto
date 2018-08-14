@@ -38,7 +38,7 @@ class Boleta < Struct.new(:boleta, :anio, :mes, :vencimiento, :monto, :pagada, :
   def normalizar
     self.anio   = self.anio.to_i if String === self.anio
     self.mes    = self.mes.to_i  if String === self.mes
-    self.pagada = self.pagada == 'pagada' || self.pagada == 'true'
+    self.pagada = self.pagada.boolean
     self.monto  = self.monto.importe('.') if String === self.monto
     self.vencimiento = self.vencimiento.fecha
   end
@@ -64,22 +64,39 @@ class Catastro < Struct.new(:padron, :nomenclatura, :categoria, :mat_ord, :alta,
   
   def limpiar_deuda
     self.boletas ||= []
+
+    if self.padron == '875285'
+      puts "ANTES"
+      pp self.boletas
+    end
+
     self.boletas = boletas.group_by{|x|x.anio}.map do |_, items|
-      dm, da = *items.group_by{|x|x.mes == 99}
-      (da.first && da.first.pagada) ? da : dm
+      dm, da = *items.group_by{|x|x.mes == 99}.map(&:last)
+      (da && da.first && da.first.pagada) ? da : dm
     end.flatten
+    
+    if self.padron == '875285'
+      puts "DESPUES"
+      pp self.boletas
+    end
+    
+    self.boletas
   end
   
-  def deuda
-    limpiar_deuda.suma(&:monto)
+  def deuda(anio=nil)
+    tmp = limpiar_deuda
+    tmp = tmp.select{|x|x.anio == anio} if anio
+    tmp.suma(&:monto)
   end
   
-  def pagado
-    limpiar_deuda.select(&:pagada).suma(&:monto)
+  def pagado(anio=nil)    
+    tmp = limpiar_deuda
+    tmp = tmp.select{|x|x.anio == anio} if anio
+    tmp.select(&:pagada).suma(&:monto)
   end
   
-  def morosidad
-    (deuda - pagado) / deuda
+  def morosidad(anio=nil)
+    1.0 - pagado(anio) / deuda(anio)
   end
 end
 
@@ -124,6 +141,16 @@ class Catastros < Almacen
     end
     self
   end
+  
+  def cargar(boletas)
+    boletas.each do |x|
+      if i = traer(x.padron)
+        i.agregar(x)
+      else
+        puts "ERROR #{x.padron} no existe"
+      end
+    end
+  end
 end
 
 def analizar_boletas
@@ -149,16 +176,20 @@ end
 
 # analizar_boletas
 def generar_deuda
-  b = Boletas.leer
   c = Catastros.leer
-  b.each do |x|
-    if i = c.traer(x.padron)
-      i.agregar(x)
-    else
-      puts "ERROR #{x.padron} no existe"
-    end
+  c.cargar(Boletas.leer)
+  d = c.map do |x|
+    {
+      padron: x.padron, 
+      deuda:      x.deuda.to_i,       pagado:      x.pagado.to_i, 
+      deuda_2017: x.deuda(2017).to_i, pagado_2017: x.pagado(2017).to_i, 
+      deuda_2018: x.deuda(2018).to_i, pagado_2018: x.pagado(2018).to_i, 
+      superficie: x.superficie.to_i,  valuacion_yb: x.valuacion.to_i, valucion_tuc: x.valuacion_total.to_i, 
+      titular:    x.responsable_fiscal.limpiar_nombre, 
+      domicilio:  x.domicilio.limpiar_domicilio
+    }
   end
-  CSV.escribir(c, 'deudas')
+  CSV.escribir(d, 'deuda_completa')
 end
 
 def analizar_calidad_datos
@@ -184,6 +215,25 @@ def analizar_calidad_datos
 end
 
 
+
+# Catastros.leer.bajar_boletas
+# generar_deuda
+# c = Catastros.leer
+# c.cargar(b=Boletas.leer)
+# a = c.traer('875285')
+# pp a
+# pp a.boletas
+#
+# pp b.traer('93482076')
+# pp bajar_boletas('875285')
+
+# b = Boletas.leer
+# pp b.select{|x|x.padron == '875285'}
+
+# a = CSV.leer('renta/boleta.csv')
+# pp a.select{|x|x[:padron] == '875285'}
+# puts '-' * 100
+# pp bajar_boletas('875285')
 
 # Catastros.leer.bajar_boletas
 generar_deuda
