@@ -13,10 +13,39 @@ class Object
   end
 end
 
+# Boleta [$3.379,50], pagada: false]
+# Boleta [ ], pagada: true]
+# Boleta [$3379.5], pagada: true]
+
+class Date
+  def fecha
+    self
+  end
+end
+
+class Object
+  def boolean
+    self
+  end
+end
+
 class String
   
-  def importe
-    gsub('$', '').gsub('.', '').gsub(',', '.').to_f
+  def boolean
+    tmp = downcase.strip
+    tmp == "true" || self == '1' || self == 'si' || self == 'yes' || self == 's' || self == 'y' || self == 'pagada'
+  end
+  
+  def fecha
+      Date.strptime(self, '%d/%m/%Y')
+    rescue
+      self
+  end
+  
+  def importe(decimal='.')
+    tmp = gsub('$', '')
+    tmp = tmp.gsub('.', '').gsub(',', '.') if decimal == ','
+    tmp.to_f
   end
 
   def numero
@@ -46,6 +75,13 @@ class String
     gsub(/[^a-zñ0-9 .()-]/i, '')
   end
 
+  def limpiar_nombre
+    simplificar.split.map(&:capitalize).join(' ')
+  end
+  
+  def limpiar_domicilio
+    simplificar.gsub(/^\W/,'').limpiar_espacios.capitalize
+  end
 end
 
 class Time
@@ -178,7 +214,7 @@ module Enumerable
   
   def contar
     c = Hash.new(0)
-    each{|x| c[x] += 1 }
+    (block_given? ? select{|x|yield x} : self).each{|x| c[x] += 1 }
     c.to_a.sort_by(&:last).reverse
   end
   
@@ -217,11 +253,11 @@ module Enumerable
   end
   
   def suma
-    inject(&:+)
+    (block_given? ? map{|x|yield x} : self).inject(&:+)
   end
   
-  def promedio
-    empty? ? 0 : suma / count
+  def promedio(&b)
+    empty? ? 0 : suma(&b) / count
   end
 end
 
@@ -312,7 +348,6 @@ class Almacen
   
   def leer(nombre=nil)
     nombre = nombre_csv(nombre, :renta)
-    puts nombre
     medir "Leer [#{nombre}]", true do 
       CSV.leer(nombre).each{|dato| agregar(dato) }
       count
@@ -354,6 +389,17 @@ class Almacen
   
   def valores(campo)
     map{|x|x[campo]}
+  end
+  
+  def traer(id)
+    self.datos[id]
+  end
+  
+  def filtrar
+    tmp = self.class.new()
+    tmp.clase = self.clase
+    select{|x|yield x}.each{|x| tmp.agregar(x)}
+    tmp
   end
 end
 
