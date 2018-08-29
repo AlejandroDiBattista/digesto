@@ -6,17 +6,31 @@ module Web
   require 'pdf-reader'
 
   def bajar_monto(boleta)
-    url = "http://boletas.yerbabuena.gob.ar//imprimir.php?id=#{boleta}"
+    url = "https://boletas.yerbabuena.gob.ar//imprimir.php?id=#{boleta}"
     reader = PDF::Reader.new(open(url))
-    linea = reader.pages.first.text.split("\n")[9].split
+    lineas = reader.pages.first.text.split("\n")
+    linea = lineas[9].split
     linea[-2]
+  end
+
+  def bajar_datos(boleta)
+    url = "https://boletas.yerbabuena.gob.ar//imprimir.php?id=#{boleta}"
+    reader = PDF::Reader.new(open(url))
+    lineas = reader.pages.first.text.split("\n")||[]
+    # p url
+    # lineas.each_with_index{|l,i| puts "#{i}) >> #{l}"}
+    {
+      contribuyente: (lineas[4][50..-1]||"").strip, 
+      titular:       (lineas[13]||"").strip,
+      domicilio:     (lineas[15]||"").strip
+    }
   end
 
   $agente = Mechanize.new
   
   def bajar_boletas(padron)
-    $agente.post('http://boletas.yerbabuena.gob.ar/busqueda.php', "padron" => padron)
-    $agente.page.css("table tr").map(&:text)[1..-1].map do |linea|
+    $agente.post('https://boletas.yerbabuena.gob.ar/busqueda.php', "padron" => padron)
+    $agente.page.css("table tbody tr").map(&:text)[0..-1].map do |linea|
       boleta = Hash[[:boleta, :anio, :mes, :vencimiento, :monto, :pagada].zip(linea.split)]
       boleta[:pagada] = boleta[:pagada]=="Pagada"
       boleta[:mes]    = boleta[:mes].numero
@@ -30,6 +44,36 @@ module Web
       boleta
     end
   end
+  
+  def bajar_catastro(padron, verboso=false)
+    url = "http://190.3.119.122:85/frmInfoParcelageo.asp?txtpadron=#{padron}"
+    puts(url) if verboso
+
+    texto = open(url).read.limpiar_espacios
+  
+    texto = texto.gsub('SUPERFICIE PROPIA SEGUN PLANO:', 'superficie:')
+    texto = texto.gsub('SUPERFICIE SEGUN PLANO:', 'superficie:')
+  
+    lineas = texto.split('&')
+    pp(lineas) if verboso
+  
+    lineas = lineas.select{|x|x[":"]}.map{|x|x.split(':')}.map{|a, *b| [a.to_id, b.join(' ').limpiar_espacios]}
+    lineas = lineas.delete_if{|nombre, valor| nombre[/propietario_legal/]}
+    lineas = lineas.delete_if{|nombre, valor| nombre[/hijuela/]}
+  
+    return nil if lineas.size == 0 
+  
+    datos = Hash[lineas]
+    datos.each{|k, v| datos[k] = datos[k].to_importe if k[/valuacion_/]}
+    datos[:id] = padron
+    datos[:alta]             = datos[:alta].limpiar_fecha
+    datos[:domicilio]        = datos[:domicilio].limpiar_domicilio         if datos[:domicilio]
+    datos[:domicilio_fiscal] = datos[:domicilio_fiscal].limpiar_domicilio  if datos[:domicilio_fiscal]
+    datos[:superficie]       = datos[:superficie].split.first.to_importe   if datos[:superficie]
+
+    datos
+  end
+  
 end
 
 include Web
@@ -52,11 +96,12 @@ class Catastro < Struct.new(:padron, :nomenclatura, :categoria, :mat_ord, :alta,
       self[campo] = self[campo].to_importe
     end
     
-    self.responsable_fiscal = self.responsable_fiscal.simplificar
+    self.responsable_fiscal = (self.responsable_fiscal||"").simplificar
     self.padron             = self.padron.to_s
   end
     
   def agregar(boleta)
+    return unless boleta
     self.boletas ||= []
     self.boletas.delete_if{|x|x.anio == boleta.anio && x.mes == boleta.mes}
     self.boletas << boleta
@@ -65,20 +110,10 @@ class Catastro < Struct.new(:padron, :nomenclatura, :categoria, :mat_ord, :alta,
   def limpiar_deuda
     self.boletas ||= []
 
-    if self.padron == '875285'
-      puts "ANTES"
-      pp self.boletas
-    end
-
     self.boletas = boletas.group_by{|x|x.anio}.map do |_, items|
       dm, da = *items.group_by{|x|x.mes == 99}.map(&:last)
       (da && da.first && da.first.pagada) ? da : dm
     end.flatten
-    
-    if self.padron == '875285'
-      puts "DESPUES"
-      pp self.boletas
-    end
     
     self.boletas
   end
@@ -97,6 +132,10 @@ class Catastro < Struct.new(:padron, :nomenclatura, :categoria, :mat_ord, :alta,
   
   def morosidad(anio=nil)
     1.0 - pagado(anio) / deuda(anio)
+  end
+  
+  def bajar(padron)
+    
   end
 end
 
@@ -131,9 +170,11 @@ class Catastros < Almacen
     map(&:padron).uniq
   end
 
-  def bajar_boletas(cantidad=500)
+  def bajar_boletas(padrones=nil, cantidad=500)
     b = Boletas.leer
-    padrones = (self.padrones - b.padrones).shuffle
+    padrones ||= b.padrones
+    padrones = (padrones - self.padrones).shuffle
+    puts "Debo bajar #{padrones.size} (#{self.padrones.size})"
     while !(nuevos = padrones.shift(cantidad)).empty?
       puts "Hay #{padrones.size} pendientes"
       nuevos.procesar("Bajando", 50){|padron| b.bajar(padron)}
@@ -151,6 +192,21 @@ class Catastros < Almacen
       end
     end
   end
+  
+  def bajar(padron, cantidad=500)
+    if Array === padron
+      padrones = (padron - self.padrones).shuffle
+      puts "Debo bajar #{padrones.size} (Hay #{self.padrones.size})"
+      while !(nuevos = padrones.shift(cantidad)).empty?
+        puts "Hay #{padrones.size} pendientes"
+        nuevos.procesar("Bajando", 50){|padron| self.bajar(padron)}
+      end
+    else
+      agregar(Web.bajar_catastro(padron))
+    end
+    self
+  end
+  
 end
 
 def analizar_boletas
@@ -214,8 +270,6 @@ def analizar_calidad_datos
   puts a18.select(&:pagada).first(10)
 end
 
-
-
 # Catastros.leer.bajar_boletas
 # generar_deuda
 # c = Catastros.leer
@@ -236,4 +290,36 @@ end
 # pp bajar_boletas('875285')
 
 # Catastros.leer.bajar_boletas
-generar_deuda
+# generar_deuda
+
+# pp Web.bajar_datos(9617728)
+# exit
+
+a = CSV.leer('padrones_yb.csv')
+b = a.map{|x|x[:padron]} 
+
+c = Catastros.new
+c.bajar(b)
+c.escribir
+exit
+
+b = Boletas.leer
+
+aux = b.padrones.first(100)
+p aux
+
+titulares = aux.procesar("Bajando Boletas") do |padron|
+  bs = Web.bajar_boletas(padron)
+  if bs && bs.first
+    p [padron, bs.size, bs.first]
+    aux = Web.bajar_datos(bs.first[:boleta])
+    aux[:padron] = padron
+    aux
+  else
+    nil
+  end
+end.compact
+
+pp titulares
+CSV.escribir(titulares, :titulares)
+

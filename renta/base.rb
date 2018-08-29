@@ -61,7 +61,7 @@ class String
   end
 
   def to_id
-    gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase.to_sym
+    simplificar.downcase.gsub(/( +)/,'_').to_sym
   end
   
   def limpiar_csv
@@ -69,10 +69,11 @@ class String
   end
     
   def simplificar
+    encode('utf-8').
     gsub('Á','a').gsub('É','e').gsub('Í','i').gsub('Ó','o').gsub('Ú','u').
     gsub('á','a').gsub('é','e').gsub('í','i').gsub('ó','o').gsub('ú','u').
-    gsub(/\s+/,' ').strip.downcase.
-    gsub(/[^a-zñ0-9 .()-]/i, '')
+    gsub('/', "_").
+    downcase.gsub(/[^a-zñ0-9 -_]/i, ' ').limpiar_espacios
   end
 
   def limpiar_nombre
@@ -80,7 +81,23 @@ class String
   end
   
   def limpiar_domicilio
-    simplificar.gsub(/^\W/,'').limpiar_espacios.capitalize
+    texto = self
+    texto = texto.gsub("Piso Dpto",'Dpto')
+    texto = texto.gsub("Dpto Block",'Block')
+    texto = texto.gsub("Block Mz",'Mz')
+    texto = texto.gsub("Mz Casa",'Casa')
+    texto = texto.gsub("Casa/Lote -",'-')
+
+    texto.limpiar_espacios.capitalize
+  end
+  
+  def limpiar_fecha
+    d, m, a = *split("/")
+    unless (1..12) === m.to_i 
+      i = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"].index(m)
+      m = "%02i" % (i+1) if i 
+    end
+    [d, m, a].join('/')
   end
 end
 
@@ -209,7 +226,7 @@ module Enumerable
       resultado.count
     end
 
-    items.sort.map{|x| resultado[x]}.compact
+    items.compact.sort.map{|x| resultado[x]}.compact
   end
   
   def contar
@@ -337,6 +354,7 @@ class Almacen
   end
   
   def agregar(datos)
+    return unless datos
     datos = self.clase.new.cargar(datos) if Hash === datos 
     self.datos ||= {}
     self.datos[datos.id] = datos
@@ -347,7 +365,7 @@ class Almacen
   end
   
   def leer(nombre=nil)
-    nombre = nombre_csv(nombre, :renta)
+    nombre = nombre_csv(nombre)#, :renta)
     medir "Leer [#{nombre}]", true do 
       CSV.leer(nombre).each{|dato| agregar(dato) }
       count
@@ -356,11 +374,12 @@ class Almacen
   end
     
   def escribir(nombre=nil)
-    nombre = nombre_csv(nombre, :renta)
+    nombre = nombre_csv(nombre)#, :renta)
     medir "Escribir [#{nombre}]", true do 
       CSV.escribir(map(&:to_h), nombre)
       count
     end
+    self
   end
     
   def each
