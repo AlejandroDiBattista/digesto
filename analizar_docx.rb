@@ -368,26 +368,27 @@ end
 # p tablas?('limpias/1814.docx')
 # clasificar(:tablas){|_, origen| tiene_tabla?(origen)}
 
-clasificar([:excepcion, :prueba]){|texto| contiene(texto, /v.a de excepci.n/i, :sanciona) }   #159
-
-a = listar(:excepcion).map do |origen|
-  texto = leer(origen)
-  fecha = texto.first.split(',').last
-  ordenanza = nombre(origen)
-  articulo = (separar(texto)[:sanciona].select{|x| x[/v.a de excepci.n/i]}.first||"").limpiar_csv
-    .gsub("\u201C",'*')
-    .gsub("\u201D",'*')
-    .gsub("\u2013",'*')
-    .gsub("\u2019",'*')
-    .gsub("\u2030",'*')
-    
-    
-  
-  if articulo["\u201C"] 
-    puts ">>>> #{ordenanza}"
-  end
-  puts "#{ordenanza} > #{fecha} > [#{articulo[0..100]}]"
-  {fecha: fecha, ordenanza: ordenanza, texto: articulo}
-end
-
-CSV.escribir(a, 'excepciones.csv')
+# clasificar([:excepcion, :prueba]){|texto| contiene(texto, /v.a de excepci.n/i, :sanciona) }   #159
+clasificar([:ofa]){|texto| contiene(texto, /contribuciones que inciden sobre los inmuebles/i, :sanciona) }   #159
+# "contribuciones que inciden sobre los inmuebles"
+# a = listar(:excepcion).map do |origen|
+#   texto = leer(origen)
+#   fecha = texto.first.split(',').last
+#   ordenanza = nombre(origen)
+#   articulo = (separar(texto)[:sanciona].select{|x| x[/v.a de excepci.n/i]}.first||"").limpiar_csv
+#     .gsub("\u201C",'*')
+#     .gsub("\u201D",'*')
+#     .gsub("\u2013",'*')
+#     .gsub("\u2019",'*')
+#     .gsub("\u2030",'*')
+#
+#
+#
+#   if articulo["\u201C"]
+#     puts ">>>> #{ordenanza}"
+#   end
+#   puts "#{ordenanza} > #{fecha} > [#{articulo[0..100]}]"
+#   {fecha: fecha, ordenanza: ordenanza, texto: articulo}
+# end
+#
+# CSV.escribir(a, 'excepciones.csv')

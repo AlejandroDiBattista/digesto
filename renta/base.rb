@@ -13,10 +13,39 @@ class Object
   end
 end
 
+# Boleta [$3.379,50], pagada: false]
+# Boleta [ ], pagada: true]
+# Boleta [$3379.5], pagada: true]
+
+class Date
+  def fecha
+    self
+  end
+end
+
+class Object
+  def boolean
+    self
+  end
+end
+
 class String
   
-  def importe
-    gsub('$', '').gsub('.', '').gsub(',', '.').to_f
+  def boolean
+    tmp = downcase.strip
+    tmp == "true" || self == '1' || self == 'si' || self == 'yes' || self == 's' || self == 'y' || self == 'pagada'
+  end
+  
+  def fecha
+      Date.strptime(self, '%d/%m/%Y')
+    rescue
+      self
+  end
+  
+  def importe(decimal='.')
+    tmp = gsub('$', '')
+    tmp = tmp.gsub('.', '').gsub(',', '.') if decimal == ','
+    tmp.to_f
   end
 
   def numero
@@ -32,7 +61,7 @@ class String
   end
 
   def to_id
-    gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase.to_sym
+    simplificar.downcase.gsub(/( +)/,'_').to_sym
   end
   
   def limpiar_csv
@@ -40,12 +69,36 @@ class String
   end
     
   def simplificar
+    encode('utf-8').
     gsub('Á','a').gsub('É','e').gsub('Í','i').gsub('Ó','o').gsub('Ú','u').
     gsub('á','a').gsub('é','e').gsub('í','i').gsub('ó','o').gsub('ú','u').
-    gsub(/\s+/,' ').strip.downcase.
-    gsub(/[^a-zñ0-9 .()-]/i, '')
+    gsub('/', "_").
+    downcase.gsub(/[^a-zñ0-9 -_]/i, ' ').limpiar_espacios
   end
 
+  def limpiar_nombre
+    simplificar.split.map(&:capitalize).join(' ')
+  end
+  
+  def limpiar_domicilio
+    texto = self
+    texto = texto.gsub("Piso Dpto",'Dpto')
+    texto = texto.gsub("Dpto Block",'Block')
+    texto = texto.gsub("Block Mz",'Mz')
+    texto = texto.gsub("Mz Casa",'Casa')
+    texto = texto.gsub("Casa/Lote -",'-')
+
+    texto.limpiar_espacios.capitalize
+  end
+  
+  def limpiar_fecha
+    d, m, a = *split("/")
+    unless (1..12) === m.to_i 
+      i = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"].index(m)
+      m = "%02i" % (i+1) if i 
+    end
+    [d, m, a].join('/')
+  end
 end
 
 class Time
@@ -173,12 +226,12 @@ module Enumerable
       resultado.count
     end
 
-    items.sort.map{|x| resultado[x]}.compact
+    items.compact.sort.map{|x| resultado[x]}.compact
   end
   
   def contar
     c = Hash.new(0)
-    each{|x| c[x] += 1 }
+    (block_given? ? select{|x|yield x} : self).each{|x| c[x] += 1 }
     c.to_a.sort_by(&:last).reverse
   end
   
@@ -217,11 +270,11 @@ module Enumerable
   end
   
   def suma
-    inject(&:+)
+    (block_given? ? map{|x|yield x} : self).inject(&:+)
   end
   
-  def promedio
-    empty? ? 0 : suma / count
+  def promedio(&b)
+    empty? ? 0 : suma(&b) / count
   end
 end
 
@@ -301,6 +354,7 @@ class Almacen
   end
   
   def agregar(datos)
+    return unless datos
     datos = self.clase.new.cargar(datos) if Hash === datos 
     self.datos ||= {}
     self.datos[datos.id] = datos
@@ -311,8 +365,7 @@ class Almacen
   end
   
   def leer(nombre=nil)
-    nombre = nombre_csv(nombre, :renta)
-    puts nombre
+    nombre = nombre_csv(nombre)#, :renta)
     medir "Leer [#{nombre}]", true do 
       CSV.leer(nombre).each{|dato| agregar(dato) }
       count
@@ -321,11 +374,12 @@ class Almacen
   end
     
   def escribir(nombre=nil)
-    nombre = nombre_csv(nombre, :renta)
+    nombre = nombre_csv(nombre)#, :renta)
     medir "Escribir [#{nombre}]", true do 
       CSV.escribir(map(&:to_h), nombre)
       count
     end
+    self
   end
     
   def each
@@ -354,6 +408,17 @@ class Almacen
   
   def valores(campo)
     map{|x|x[campo]}
+  end
+  
+  def traer(id)
+    self.datos[id]
+  end
+  
+  def filtrar
+    tmp = self.class.new()
+    tmp.clase = self.clase
+    select{|x|yield x}.each{|x| tmp.agregar(x)}
+    tmp
   end
 end
 
