@@ -1,0 +1,63 @@
+1.	Personal
+1.1.	Reglamentos y Legislación en General
+1.2.	Cargos y Estructuras
+1.3.	Remuneraciones
+1.4.	Licencias
+1.4.1.	Generales
+1.4.2.	Asignaciones Familiares
+1.4.3.	Bonificaciones
+2.	Faltas
+2.1.	Tribunal de faltas
+2.2.	Código de faltas
+3.	Cultura y Educación
+3.1.	Cultura
+3.2.	Educación
+4.	Obras Publicas
+4.1.	Calles
+4.1.1.	Nombres
+4.2.	Veredas
+4.3.	Plazas
+4.3.1.	Nombres
+5.	Compras
+5.1.	Reglamentación
+5.2.	Patrimonial
+6.	Servicios Públicos
+6.1.	Reglamentación
+6.2.	Alumbrado Publico
+6.3.	Seguridad
+6.4.	Recolección de Residuos
+6.5.	Agua y Cloacas
+6.6.	Gas
+7.	Tránsito
+7.1.	Reglamentación
+7.2.	Servicio de Transporte
+7.2.1.	Saayb
+7.2.2.	Impropio
+7.2.3.	Pasajeros
+8.	Adhesiones
+8.1.	Leyes
+8.2.	Decretos
+9.	Convenios
+10.	Cementerio
+10.1.	Municipal
+10.2.	San Agustín
+11.	Salud
+11.1.	Política Sanitaria
+11.2.	Deporte 
+11.3.	Turismo
+11.4.	Discapacidad
+12.	Medio Ambiente
+12.1.	Ruidos Molestos
+12.2.	Forestación
+13.	Hacienda
+13.1.	Prestamos
+13.2.	Presupuesto
+14.	Actividades Comerciales
+14.1.	Habilitación
+15.	Fiscal
+15.1.	OFA
+15.2.	Exenciones
+15.3.	Moratorias
+15.4.	Tributarias
+16.	Políticas Sociales
+16.1.	Bolsa de trabajo
